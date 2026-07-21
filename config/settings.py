@@ -156,3 +156,7 @@ class Settings(BaseSettings):
         """
         return self.api_env.lower() == "production"
 
+# singleton instance
+settings = Settings()
+
+# from config.settings import settings
