@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     )
 
     openai_embedding_model : str = Field(
-        default = "text-embedding-3-large",
+        default = "text-embedding-3-small",
         description = "OpenAI Model used to generate the vector embeddings"
     )
 
