@@ -134,8 +134,133 @@ class ClinicalTrialsClient:
 
         logger.info(
             f"Search complete | "
-            f"total studies returned={len(all_studies)}"
+            f"total studies returned = {len(all_studies)}"
         )
 
         return all_studies
-    
+
+    # fetch study by ID
+    async def fetch_study(self, nct_id : str) -> dict[str, Any] | None:
+        """
+        fetches the complete record for 1 specific study (nct_id)
+        nct_id is unique identifier for every study on clinicaltrials.gov
+        returns : dict with all study (nct_id) details if that study is found
+        if study is not found, it returns None 
+        """
+        logger.info(f"Fetching study | nct_id = {nct_id}")
+
+        # internal helper function
+        def _get_study():
+            # inner function : makes the actual HTTP GET request
+            # regular non-async function as request is synchronous
+            return self._session.get(
+                f"{BASE_URL}/studies/{nct_id}",
+                timeout = REQUEST_TIMEOUT,
+            )
+
+        try:
+            # asyncio.to_thread() runs _get_study() in a background thread
+            response = await asyncio.to_thread(_get_study)
+            response.raise_for_status()
+
+            return response.json()
+
+        except requests.exceptions.HTTPError as e:
+            logger.warning(
+                f"Study not found | "
+                f"nct_id = {nct_id}"
+                f"status = {e.response.status_code}"
+            )
+            return None
+
+        except Exception as e:
+            logger.error(
+                f"Failed to fetch study | "
+                f"nct_id = {nct_id}"
+                f"error = {e}"
+            )
+            return None
+
+    def _build_search_params(
+            self,
+            condition : str | None,
+            intervention : str | None,
+            sponsor : str | None,
+            status : list[str] | None,
+            page_token : str | None,
+    ) -> dict[str, Any]:
+        """
+        build the query parameter dictionary for one API request
+        returns a dict of query params ready to be sent to API
+        """
+        params : dict[str, Any] = {
+            "pageSize" : PAGE_SIZE,
+            "format" : "json",
+        }
+
+        if condition:
+            params["query.cond"] = condition
+        if intervention:
+            params["query.intr"] = intervention
+        if sponsor:
+            params["query.spons"] = sponsor
+        if status:
+            params["filter.overallStatus"] = "|".join(status)
+        if page_token:
+            params["pageToken"] = page_token
+
+        return params
+
+    # retry decorator from tenacity
+    @retry(
+        stop = stop_after_attempt(MAX_RETRIES),
+        wait = wait_exponential(multiplier = 1, min = 1, max = 8),
+        retry = retry_if_exception_type(
+            (requests.exceptions.Timeout, requests.exceptions.ConnectionError)
+        )
+    )
+
+    async def _fetch_page(self, params:dict[str, Any]) -> dict[str, Any] | None:
+        """
+        this makes one GET request to /studies endpoint
+        """
+        def _get():
+            # inner function makes the actual HTTP request
+            return self._session.get(
+                f"{BASE_URL}/studies",
+                params = params,
+                timeout = REQUEST_TIMEOUT,
+            )
+
+        try:
+            response = await asyncio.to_thread(_get)
+            response.raise_for_status()
+            return response.json()
+
+        except requests.exceptions.Timeout:
+            logger.warning(
+                f"Request timed out after {REQUEST_TIMEOUT} seconds! Retrying..."
+            )
+            raise
+
+        except requests.exceptions.ConnectionError:
+            logger.warning(
+                f"Connection Error! Retrying..."
+            )
+            raise
+
+        except requests.exceptions.HTTPError as e:
+            logger.error(
+                f"HTTP error from API | "
+                f"status = {e.response.status_code}"
+                f"url = {e.response.url}"
+            )
+            # return None for HTTP errors — do not retry these
+            return None
+
+        except Exception as e:
+            logger.error(
+                f"Unexpected error fetching page | "
+                f"error = {e}"
+            )
+            return None
