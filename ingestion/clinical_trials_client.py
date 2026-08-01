@@ -48,7 +48,7 @@ class ClinicalTrialsClient:
 
     async def __aenter__(self) -> "ClinicalTrialsClient":
         """
-        called automatically when we enter aync with block
+        called automatically when we enter "aync with" block
         creates the HTTP session and sets the shared headers
         """
         self._session = requests.Session()
@@ -58,7 +58,7 @@ class ClinicalTrialsClient:
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """
-        this method is called automatically when we exit the "async with" block
+        this method is called automatically when we exit "async with"
         closes the HTTP session and releases the TCP connection
         runs even if error occurs within the async block
         """
@@ -225,7 +225,7 @@ class ClinicalTrialsClient:
         this makes one GET request to /studies endpoint
         """
         def _get():
-            # inner function makes the actual HTTP request
+            # inner function makes the actual HTTP request to the endpoint
             return self._session.get(
                 f"{BASE_URL}/studies",
                 params = params,
