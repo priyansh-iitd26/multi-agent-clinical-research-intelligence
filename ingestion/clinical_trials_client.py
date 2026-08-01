@@ -85,9 +85,9 @@ class ClinicalTrialsClient:
 
         logger.info(
             f"Searching studies | "
-            f"condition = {condition}"
-            f"intervention = {intervention}"
-            f"sponsor = {sponsor}"
+            f"condition = {condition} | "
+            f"intervention = {intervention} | "
+            f"sponsor = {sponsor} | "
             f"max_results = {max_results}" 
         )
 
@@ -119,8 +119,8 @@ class ClinicalTrialsClient:
             all_studies.extend(page_studies)
 
             logger.info(
-                f"Page - {page_number}"
-                f"fetched = {len(page_studies)}"
+                f"Page - {page_number} | "
+                f"fetched = {len(page_studies)} | "
                 f"total so far = {len(all_studies)}"
             )
 

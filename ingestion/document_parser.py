@@ -80,7 +80,8 @@ class DocumentParser:
             # so the rest of this method stays readable
 
             protocol = raw_study_dict.get("protocolSection", {})
-            id_module = protocol.get("statusModule", {})
+
+            id_module = protocol.get("identificationModule", {})
             status_module = protocol.get("statusModule", {})
             sponsor_module = protocol.get("sponsorCollaboratorsModule", {})
             conditions_module = protocol.get("conditionsModule", {})

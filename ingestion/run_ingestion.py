@@ -61,7 +61,7 @@ SEARCH_CONDITIONS = [
 # how many max studies to fetch for EACH condition above
 # with 3 studies in SEARCH_CONDITIONS and 
 # <= 50 MAX_STUDIES_PER_CONDITION, we get upto 150 studies total
-MAX_STUDIES_PER_CONDITION = 20
+MAX_STUDIES_PER_CONDITION = 50
 
 # how many max PubMed papers to fetch per study
 # most studies have ZERO papers referencing them
@@ -124,8 +124,7 @@ async def run_ingestion():
                 # ClinicalTrialsClient class
 
                 logger.info(
-                    f"Fetched {len(raw_studies)} studies! | "
-                    f"condition = {condition}"
+                    f"Fetched {len(raw_studies)} studies for condition = {condition}"
                 )
 
                 # step-2 : clean/parse each study we got
