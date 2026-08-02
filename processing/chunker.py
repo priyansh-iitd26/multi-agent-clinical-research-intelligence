@@ -154,7 +154,7 @@ class Chunker:
 
         chunks = self._split_into_chunks(
             text = full_text,
-            unique_id = parsed_paper.pmid
+            unique_id = parsed_paper.pmid,
             source = "paper"
         )
 
@@ -412,4 +412,4 @@ class Chunker:
                 f"overlap = {OVERLAP_SIZE}"
             )
 
-            return chunks
+        return chunks
