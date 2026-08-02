@@ -182,7 +182,7 @@ class PubMedClient:
             response.raise_for_status()
 
             data = response.json()
-            id_list = data.get("esearchresult, {}").get("idlist", [])
+            id_list = data.get("esearchresult", {}).get("idlist", [])
 
             await asyncio.sleep(RATE_LIMIT_SLEEP)
 

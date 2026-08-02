@@ -295,9 +295,9 @@ class DocumentParser:
 
         logger.info(
             f"Parsed papers | "
-            f"success={len(parsed)} | "
-            f"failed={num_failed} | "
-            f"total={len(raw_papers)}"
+            f"success = {len(parsed)} | "
+            f"failed = {num_failed} | "
+            f"total = {len(raw_papers)}"
         )
 
         return parsed
