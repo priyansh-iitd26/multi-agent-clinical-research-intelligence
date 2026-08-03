@@ -150,3 +150,6 @@ async def run_processing():
     logger.info(f"Chunks embedded   : {len(embedded_chunks)}")
     logger.info(f"Chunks stored     : {chunks_stored}")
     logger.info("*" * 50)
+
+if __name__ == "__main__":
+    asyncio.run(run_processing())
