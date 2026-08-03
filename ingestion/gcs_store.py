@@ -200,7 +200,8 @@ class GCSStore:
         for blob in blobs:
             # blob.name looks like "processed/studies/NCT997066.json"
             filename = blob.name.split("/")[-1]
-            nct_id = filename.replace("/", "")
+            # nct_id = filename.replace("/", "")
+            nct_id = filename.removesuffix(".json")
 
             if nct_id:
                 nct_ids.append(nct_id)

@@ -101,18 +101,23 @@ class VectorStore:
             f"database = {settings.db_name}"
         )
 
-        self._pool = await asyncpg.create_pool(
-            host = settings.db_host,
-            port = int(settings.db_port),
-            database = settings.db_name,
-            user = settings.db_user,
-            password = settings.db_password,
-            min_size = POOL_MIN_SIZE,
-            max_size = POOL_MAX_SIZE,
-            init = self._init_connection,
-            # init = means : "run this function on every new connection the pool creates" 
-            # we use it to register our pgvector codec
-        )
+        try:
+            self._pool = await asyncpg.create_pool(
+                host = settings.db_host,
+                port = int(settings.db_port),
+                database = settings.db_name,
+                user = settings.db_user,
+                password = settings.db_password,
+                min_size = POOL_MIN_SIZE,
+                max_size = POOL_MAX_SIZE,
+                init = self._init_connection,
+                # init = means : "run this function on every new connection the pool creates" 
+                # we use it to register our pgvector codec
+            )
+            
+        except Exception:
+            logger.exception("Failed to create Cloud SQL connection pool!")
+            raise
 
         logger.info("Connection pool created successfully!")
 
