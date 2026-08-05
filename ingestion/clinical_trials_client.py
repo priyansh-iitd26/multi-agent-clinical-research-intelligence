@@ -153,6 +153,7 @@ class ClinicalTrialsClient:
         def _get_study():
             # inner function : makes the actual HTTP GET request
             # regular non-async function as request is synchronous
+            assert self._session is not None
             return self._session.get(
                 f"{BASE_URL}/studies/{nct_id}",
                 timeout = REQUEST_TIMEOUT,
@@ -226,6 +227,7 @@ class ClinicalTrialsClient:
         """
         def _get():
             # inner function makes the actual HTTP request to the endpoint
+            assert self._session is not None
             return self._session.get(
                 f"{BASE_URL}/studies",
                 params = params,
