@@ -388,7 +388,7 @@ class Chunker:
             if not chunk_words:
                 break
 
-            chunk_text = "".join(chunk_words)
+            chunk_text = " ".join(chunk_words)
 
             chunk = TextChunk(
                 chunk_id = f"{unique_id}_chunk_{chunk_index}",

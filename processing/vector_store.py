@@ -256,7 +256,7 @@ class VectorStore:
         # a dictionary containing all the study fields to save
         # comes from ParsedStudy.model_dump() - converting
         # the Pydantic object into a plain Python dict
-    ) -> None:
+    ) -> bool:
         """
         saves one study record into the studies table
 
@@ -269,56 +269,68 @@ class VectorStore:
         """
 
         assert self._pool is not None
-        async with self._pool.acquire() as conn:
-            await conn.execute(
-                """
-                INSERT INTO studies
-                    (nct_id, title, sponsor, phase, status,
-                     conditions, interventions, primary_outcome,
-                     secondary_outcomes, start_date, completion_date,
-                     results_posted, enrollment, gcs_path)
-                VALUES
-                    ($1, $2, $3, $4, $5,
-                     $6, $7, $8,
-                     $9, $10, $11,
-                     $12, $13, $14)
-                ON CONFLICT (nct_id) DO UPDATE SET
-                    title            = EXCLUDED.title,
-                    sponsor          = EXCLUDED.sponsor,
-                    phase            = EXCLUDED.phase,
-                    status           = EXCLUDED.status,
-                    conditions       = EXCLUDED.conditions,
-                    interventions    = EXCLUDED.interventions,
-                    primary_outcome  = EXCLUDED.primary_outcome,
-                    secondary_outcomes = EXCLUDED.secondary_outcomes,
-                    start_date       = EXCLUDED.start_date,
-                    completion_date  = EXCLUDED.completion_date,
-                    results_posted   = EXCLUDED.results_posted,
-                    enrollment       = EXCLUDED.enrollment,
-                    gcs_path         = EXCLUDED.gcs_path
-                """,
-                # ON CONFLICT (nct_id) DO UPDATE SET means:
-                # if this nct_id already exists in the table,
-                # UPDATE all its fields with the new values
-                # EXCLUDED.field refers to the value we tried to INSERT
-                # this pattern is called "upsert"
-                # UPDATE if exists, INSERT if new
 
-                study_data.get("nct_id"),              # $1
-                study_data.get("title"),               # $2
-                study_data.get("sponsor"),             # $3
-                study_data.get("phase"),               # $4
-                study_data.get("status"),              # $5
-                study_data.get("conditions", []),      # $6
-                study_data.get("interventions", []),   # $7
-                study_data.get("primary_outcome"),     # $8
-                study_data.get("secondary_outcomes", []),  # $9
-                study_data.get("start_date"),          # $10
-                study_data.get("completion_date"),     # $11
-                study_data.get("results_posted"),      # $12
-                study_data.get("enrollment"),          # $13
-                study_data.get("gcs_path"),            # $14
+        try:
+
+            async with self._pool.acquire() as conn:
+                await conn.execute(
+                    """
+                    INSERT INTO studies
+                        (nct_id, title, sponsor, phase, status,
+                        conditions, interventions, primary_outcome,
+                        secondary_outcomes, start_date, completion_date,
+                        results_posted, enrollment, gcs_path)
+                    VALUES
+                        ($1, $2, $3, $4, $5,
+                        $6, $7, $8,
+                        $9, $10, $11,
+                        $12, $13, $14)
+                    ON CONFLICT (nct_id) DO UPDATE SET
+                        title            = EXCLUDED.title,
+                        sponsor          = EXCLUDED.sponsor,
+                        phase            = EXCLUDED.phase,
+                        status           = EXCLUDED.status,
+                        conditions       = EXCLUDED.conditions,
+                        interventions    = EXCLUDED.interventions,
+                        primary_outcome  = EXCLUDED.primary_outcome,
+                        secondary_outcomes = EXCLUDED.secondary_outcomes,
+                        start_date       = EXCLUDED.start_date,
+                        completion_date  = EXCLUDED.completion_date,
+                        results_posted   = EXCLUDED.results_posted,
+                        enrollment       = EXCLUDED.enrollment,
+                        gcs_path         = EXCLUDED.gcs_path
+                    """,
+                    # ON CONFLICT (nct_id) DO UPDATE SET means:
+                    # if this nct_id already exists in the table,
+                    # UPDATE all its fields with the new values
+                    # EXCLUDED.field refers to the value we tried to INSERT
+                    # this pattern is called "upsert"
+                    # UPDATE if exists, INSERT if new
+
+                    study_data.get("nct_id"),              # $1
+                    study_data.get("title"),               # $2
+                    study_data.get("sponsor"),             # $3
+                    study_data.get("phase"),               # $4
+                    study_data.get("status"),              # $5
+                    study_data.get("conditions", []),      # $6
+                    study_data.get("interventions", []),   # $7
+                    study_data.get("primary_outcome"),     # $8
+                    study_data.get("secondary_outcomes", []),  # $9
+                    study_data.get("start_date"),          # $10
+                    study_data.get("completion_date"),     # $11
+                    study_data.get("results_posted"),      # $12
+                    study_data.get("enrollment"),          # $13
+                    study_data.get("gcs_path"),            # $14
+                )
+
+                return True
+
+        except Exception:
+            logger.exception(
+                f"Failed to save study {study_data.get('nct_id')}"
             )
+            return False
+
 
     # semantic search
     async def search(
