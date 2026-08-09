@@ -462,6 +462,49 @@ class VectorStore:
         logger.info(f"Total chunks in database: {result}")
         return result
 
+
+    # get all chunks from a study
+    async def get_all_chunks_for_study(
+        self,
+        nct_id: str
+    ) -> list[dict[str, Any]]:
+        """
+        returns every chunk belonging to a study, ordered by chunk_index
+
+        args:
+            nct_id: ClinicalTrials.gov study identifier
+
+        returns:
+            a list of dictionaries containing the study's chunks
+        """
+
+        assert self._pool is not None
+        async with self._pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT
+                    nct_id,
+                    chunk_text,
+                    chunk_index,
+                    source
+                FROM chunks
+                WHERE nct_id = $1
+                ORDER BY chunk_index ASC
+                """,
+                nct_id,
+            )
+
+        results = [dict(row) for row in rows]
+
+        logger.info(
+            f"Retrieved study chunks | "
+            f"nct_id = {nct_id} | "
+            f"chunks = {len(results)}"
+        )
+
+        return results
+
+
     # check if a study has already been processed
     async def study_exists(self, nct_id: str) -> bool:
         """

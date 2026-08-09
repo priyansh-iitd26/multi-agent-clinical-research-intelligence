@@ -1,5 +1,5 @@
 # this file manages the SPONSOR KNOWLEDGE BASE - a growing collection
-# of FACTS about every research sponsor our system has ever encountered
+# of FACTS or knowledge about every research sponsor our system has ever encountered
 
 # semantic memory analogue ->
 # think of a credit rating agency like CIBIL in India
@@ -156,7 +156,7 @@ class SemanticStore:
             # the Track Record agent handles this: "first time seeing this
             # sponsor - not enough data to make a reliable judgment."
             logger.info(
-                f"No profile found for sponsor | sponsor={sponsor}"
+                f"No profile found for sponsor! | sponsor = {sponsor}"
             )
             return None
 
@@ -253,7 +253,7 @@ class SemanticStore:
                 """,
                 # INSERT section (new sponsor - first time we see them):
                 # credibility_score starts at 0.5 - neutral, no data yet
-                # total_studies starts at 1 — this is their first study.
+                # total_studies starts at 1 - this is their first study.
                 # $2 = results_posted as int (True=1, False=0)
                 # $3 = results_missing as int (True=1, False=0)
                 # $4 = broken_promises as int (True=1, False=0)
