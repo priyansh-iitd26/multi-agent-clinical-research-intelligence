@@ -479,5 +479,5 @@ ALL_CLINICAL_TOOLS = [
     fetch_study_details,
     search_studies_by_condition,
     check_results_posted,
-    get_study_amendments,
+    get_study_amendments
 ]
