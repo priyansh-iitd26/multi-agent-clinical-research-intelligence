@@ -168,6 +168,7 @@ class PubMedClient:
         empty list if no papers found or request failed.
         """
         try:
+            assert self._client is not None
             response = await self._client.get(
                 f"{BASE_URL}/esearch.fcgi",
                 params = {
@@ -261,6 +262,7 @@ class PubMedClient:
         returns: list of parsed paper dictionaries for this batch
         """
         try:
+            assert self._client is not None
             response = await self._client.get(
                 f"{BASE_URL}/efetch.fcgi",
                 # the efetch endpoint

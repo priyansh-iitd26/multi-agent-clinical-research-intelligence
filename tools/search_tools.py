@@ -120,8 +120,8 @@ def _run_async(coroutine):
     """
 
     # retrieve the current asyncio event loop
-    # The event loop is responsible for scheduling and executing
-    # asynchronous tasks such as database queries and network requests.
+    # the event loop is responsible for scheduling and executing
+    # asynchronous tasks such as database queries and network requests
     loop = asyncio.get_event_loop()
 
     # execute the coroutine until it completes, block the current thread
