@@ -13,7 +13,7 @@
 
 # pattern detection requires SIMULTANEOUS awareness of hundreds of studies
 # a human analyst can deeply follow 10-15 studies at a time
-# this agent holds all the studies in our database in its search context at once
+# this agent holds all the studies in our database in its search context
 
 import json
 import re
