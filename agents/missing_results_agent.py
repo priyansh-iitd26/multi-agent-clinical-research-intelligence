@@ -133,7 +133,7 @@ CONFIDENCE SCORING GUIDE:
 - 0.8  : Completed 2-5 years ago, zero results, known non-compliant sponsor
 - 0.7  : Completed 1-2 years ago, zero results, average sponsor
 - 0.6  : Completed 1 year ago exactly, borderline timing
-- Below 0.6: Uncertain — send to human review
+- Below 0.6: Uncertain
 
 OUTPUT FORMAT for each signal found:
 Return a JSON block exactly like this:

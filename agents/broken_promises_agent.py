@@ -100,7 +100,7 @@ CONFIDENCE SCORING:
 - 0.8  : Primary outcome changed mid-study, weak justification
 - 0.7  : Secondary outcome changed to primary after enrollment
 - 0.6  : Measurement method changed (not the outcome itself)
-- Below 0.6: Ambiguous — send to human review
+- Below 0.6: Ambiguous
 
 OUTPUT FORMAT:
 {{
