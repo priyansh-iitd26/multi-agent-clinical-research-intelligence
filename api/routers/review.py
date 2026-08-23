@@ -1,4 +1,4 @@
-# handles the human review queue endpoints
+# handles the human review queue endpoints:
 #   GET /api/v1/review/queue    -> get all pending review queue items
 #   PATCH /api/v1/review/{id}   -> submit a human decision
 
