@@ -98,7 +98,7 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
     # attaching the startup/shutdown logic to the app
-    docs_url="/docs"
+    docs_url="/docs",
     redoc_url="/redoc"
 )
 
