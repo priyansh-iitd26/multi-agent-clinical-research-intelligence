@@ -12,17 +12,19 @@
 # installing massive tools that compile code
 
 # base image
+# small python 3.12 linux image
 FROM python:3.12-slim AS builder
 
 # working dir
+# setting /app as the working dir inside the container
 WORKDIR /app
 
-# installing buildtime system dependencies needed to compile some python packages
+# installing build time linux packages system dependencies needed to compile some python packages
 # some python packages (like asyncpg) include C extensions
 # that need to be compiled from source - requires build tools
 
-# gcc -> C compiler
-# libpq-dev -> PostgreSQL headers
+# gcc -> C/C++ compiler
+# libpq-dev -> PostgreSQL headers/libraries
 RUN apt-get update && apt-get install -y \
     gcc \
     libpq-dev \
@@ -49,13 +51,14 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 # base image
 FROM python:3.12-slim
-# this image does not have gcc, libpq-dev (build tools)
+# this image does NOT have build tools from stage-1 yet (gcc, libpq-dev)
 # much smaller and more secure than carrying build tools into production
 
 # working dir
 WORKDIR /app
 
-# installing runtime dependencies (curl for healthcheck, libpq5 for db)
+# installing runtime dependencies 
+# curl for healthcheck, libpq5 for PostgreSQL's runtime client library
 RUN apt-get update && apt-get install -y \
     curl \
     libpq5 \
