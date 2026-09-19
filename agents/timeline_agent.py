@@ -16,7 +16,7 @@
 
 import json
 import re
-from langchain_openai import ChatOpenAI
+from langchain_openai import AzureChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 
 from graph.state import GraphState, SignalOutput
@@ -59,10 +59,12 @@ AGENT_TOOLS = [
 _procedural = ProceduralStore()
 _episodic = EpisodicStore()
 
-_llm = ChatOpenAI(
-    model = settings.openai_chat_model,
+_llm = AzureChatOpenAI(
+    azure_deployment = settings.azure_openai_chat_deployment,
+    azure_endpoint = settings.azure_openai_endpoint,
+    api_version = settings.azure_openai_api_version,
     temperature = 0.1,
-    api_key = settings.openai_api_key
+    api_key = settings.azure_openai_api_key
 ).bind_tools(AGENT_TOOLS)
 
 

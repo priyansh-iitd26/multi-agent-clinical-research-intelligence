@@ -29,7 +29,8 @@
 import asyncio
 import json
 from langchain_core.tools import tool
-from openai import AsyncOpenAI
+from openai import AsyncAzureOpenAI
+from config.settings import settings
 
 from processing.vector_store import VectorStore
 # VectorStore gives us semantic search over study chunks
@@ -134,9 +135,9 @@ def _run_async(coroutine):
     # RuntimeError("This event loop is already running")
 
 
-client = AsyncOpenAI()
+client = AsyncAzureOpenAI(api_key=settings.azure_openai_api_key, azure_endpoint=settings.azure_openai_endpoint, api_version=settings.azure_openai_api_version)
 
-EMBEDDING_MODEL = "text-embedding-3-small"
+EMBEDDING_MODEL = settings.azure_openai_embedding_deployment
 
 async def get_embedding(text: str) -> list[float]:
     """
