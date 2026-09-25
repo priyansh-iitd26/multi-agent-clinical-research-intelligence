@@ -39,7 +39,7 @@ import uuid
 # two episodes ever clash in the database
 
 from datetime import datetime, UTC
-from openai import AsyncAzureOpenAI
+from openai import AsyncOpenAI
 import asyncpg
 from config.settings import settings
 
@@ -88,8 +88,8 @@ class EpisodicStore:
         self._pool: asyncpg.Pool | None = None
 
         # for converting episode_content into 1536-number vector embeddings
-        self._openai = AsyncAzureOpenAI(api_key=settings.azure_openai_api_key, azure_endpoint=settings.azure_openai_endpoint, api_version=settings.azure_openai_api_version)
-        self._embedding_model = settings.azure_openai_embedding_deployment
+        self._openai = AsyncOpenAI(api_key=settings.openai_api_key)
+        self._embedding_model = settings.openai_embedding_model
         # NOTE: the embedding model must match the embedding model used in embedder.py
         # because episode embeddings and chunk embeddings must be
         # in the same vector space to be comparable

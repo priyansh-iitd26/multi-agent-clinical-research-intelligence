@@ -18,7 +18,7 @@
 
 import uuid
 
-from langchain_openai import AzureChatOpenAI
+from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from graph.state import GraphState, SignalOutput
@@ -29,10 +29,8 @@ from config.logging_config import setup_logging
 logger = setup_logging(__name__)
 
 # llm instance
-llm = AzureChatOpenAI(
-    azure_deployment = settings.azure_openai_chat_deployment,
-    azure_endpoint = settings.azure_openai_endpoint,
-    api_version = settings.azure_openai_api_version,
+llm = ChatOpenAI(
+    model = settings.openai_chat_model,
     temperature = 0.1,
     # temperature controls how creative vs deterministic the output is
     # 0.0 => completely deterministic (same input -> same output always)
@@ -41,7 +39,7 @@ llm = AzureChatOpenAI(
     # we use 0.1 because intelligence briefs should be factual and
     # consistent - not creative
 
-    api_key = settings.azure_openai_api_key
+    api_key = settings.openai_api_key
 )
 
 

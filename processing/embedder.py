@@ -25,7 +25,7 @@
 import asyncio
 
 from dataclasses import dataclass
-from openai import AsyncAzureOpenAI
+from openai import AsyncOpenAI
 # AsyncOpenAI is OpenAI's official async Python client
 # the "Async" version lets us use await - meaning our program
 # does not freeze while waiting for OpenAI to respond
@@ -99,10 +99,10 @@ class Embedder:
 
     def __init__(self):
         # creating the async OpenAI client using our API key from .env
-        self._client = AsyncAzureOpenAI(api_key=settings.azure_openai_api_key, azure_endpoint=settings.azure_openai_endpoint, api_version=settings.azure_openai_api_version)
+        self._client = AsyncOpenAI(api_key=settings.openai_api_key)
         # this client is reused for every API call in this session
 
-        self._model = settings.azure_openai_embedding_deployment
+        self._model = settings.openai_embedding_model
         # stored as an instance variable so it is easy to see
         # and change in one place if needed
 

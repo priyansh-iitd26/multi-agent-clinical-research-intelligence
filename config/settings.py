@@ -28,30 +28,20 @@ class Settings(BaseSettings):
         extra = "ignore",
     )
 
-    azure_openai_api_key : str = Field(
+    openai_api_key : str = Field(
         ...,
-        description = "Azure OpenAI API Key for LLM and Embeddings"
+        description = "OpenAI API Key for LLM and Embeddings"
     )
 
-    azure_openai_endpoint : str = Field(
-        ...,
-        description = "Azure OpenAI Endpoint URL"
-    )
-
-    azure_openai_api_version : str = Field(
-        default = "2024-02-01",
-        description = "Azure OpenAI API Version"
-    )
-
-    azure_openai_embedding_deployment : str = Field(
+    openai_embedding_model : str = Field(
         default = "text-embedding-3-small",
-        description = "Azure OpenAI Deployment Name for the vector embeddings"
+        description = "OpenAI Model used to generate the vector embeddings"
     )
 
     # agents would be using GPT-4o
-    azure_openai_chat_deployment : str = Field(
+    openai_chat_model : str = Field(
         default = "gpt-4o",
-        description = "Azure OpenAI Deployment Name for Agent Reasoning"
+        description = "OpenAI model used for Agent Reasoning"
     )
 
     langsmith_api_key : str = Field(
