@@ -107,7 +107,7 @@ class Embedder:
         # and change in one place if needed
 
         logger.info(
-            f"Embedder initialised! | model={self._model}"
+            f"Embedder initialized! | model={self._model}"
         )
 
     # embed a list of chunks
