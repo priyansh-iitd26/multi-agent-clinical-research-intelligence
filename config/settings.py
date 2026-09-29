@@ -28,20 +28,25 @@ class Settings(BaseSettings):
         extra = "ignore",
     )
 
-    openai_api_key : str = Field(
+    huggingface_api_key : str = Field(
         ...,
-        description = "OpenAI API Key for LLM and Embeddings"
+        description = "HuggingFace API Token for LLM and Embeddings"
     )
 
-    openai_embedding_model : str = Field(
-        default = "text-embedding-3-small",
-        description = "OpenAI Model used to generate the vector embeddings"
+    huggingface_base_url : str = Field(
+        default = "https://api-inference.huggingface.co/v1/",
+        description = "HuggingFace Inference API Base URL"
+    )
+
+    huggingface_embedding_model : str = Field(
+        default = "Qwen/Qwen3-Embedding-8B",
+        description = "HuggingFace Model used to generate the vector embeddings"
     )
 
     # agents would be using GPT-4o
-    openai_chat_model : str = Field(
-        default = "gpt-4o",
-        description = "OpenAI model used for Agent Reasoning"
+    huggingface_chat_model : str = Field(
+        default = "meta-llama/Llama-3.3-70B-Instruct",
+        description = "HuggingFace model used for Agent Reasoning"
     )
 
     langsmith_api_key : str = Field(

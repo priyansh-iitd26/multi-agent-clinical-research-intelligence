@@ -60,9 +60,10 @@ _procedural = ProceduralStore()
 _episodic = EpisodicStore()
 
 _llm = ChatOpenAI(
-    model = settings.openai_chat_model,
+    model = settings.huggingface_chat_model,
+    base_url = settings.huggingface_base_url,
     temperature = 0.1,
-    api_key = settings.openai_api_key
+    api_key = settings.huggingface_api_key
 ).bind_tools(AGENT_TOOLS)
 
 

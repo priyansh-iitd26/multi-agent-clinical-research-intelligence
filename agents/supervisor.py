@@ -30,7 +30,8 @@ logger = setup_logging(__name__)
 
 # llm instance
 llm = ChatOpenAI(
-    model = settings.openai_chat_model,
+    model = settings.huggingface_chat_model,
+    base_url = settings.huggingface_base_url,
     temperature = 0.1,
     # temperature controls how creative vs deterministic the output is
     # 0.0 => completely deterministic (same input -> same output always)
@@ -39,7 +40,7 @@ llm = ChatOpenAI(
     # we use 0.1 because intelligence briefs should be factual and
     # consistent - not creative
 
-    api_key = settings.openai_api_key
+    api_key = settings.huggingface_api_key
 )
 
 

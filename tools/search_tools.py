@@ -30,6 +30,7 @@ import asyncio
 import json
 from langchain_core.tools import tool
 from openai import AsyncOpenAI
+from config.settings import settings
 
 from processing.vector_store import VectorStore
 # VectorStore gives us semantic search over study chunks
@@ -134,9 +135,9 @@ def _run_async(coroutine):
     # RuntimeError("This event loop is already running")
 
 
-client = AsyncOpenAI()
+client = AsyncOpenAI(api_key=settings.huggingface_api_key, base_url=settings.huggingface_base_url)
 
-EMBEDDING_MODEL = "text-embedding-3-small"
+EMBEDDING_MODEL = settings.huggingface_embedding_model
 
 async def get_embedding(text: str) -> list[float]:
     """

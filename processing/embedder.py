@@ -99,10 +99,10 @@ class Embedder:
 
     def __init__(self):
         # creating the async OpenAI client using our API key from .env
-        self._client = AsyncOpenAI(api_key=settings.openai_api_key)
+        self._client = AsyncOpenAI(api_key=settings.huggingface_api_key, base_url=settings.huggingface_base_url)
         # this client is reused for every API call in this session
 
-        self._model = settings.openai_embedding_model
+        self._model = settings.huggingface_embedding_model
         # stored as an instance variable so it is easy to see
         # and change in one place if needed
 

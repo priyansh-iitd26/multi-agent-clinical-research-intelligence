@@ -88,8 +88,8 @@ class EpisodicStore:
         self._pool: asyncpg.Pool | None = None
 
         # for converting episode_content into 1536-number vector embeddings
-        self._openai = AsyncOpenAI(api_key=settings.openai_api_key)
-        self._embedding_model = settings.openai_embedding_model
+        self._openai = AsyncOpenAI(api_key=settings.huggingface_api_key, base_url=settings.huggingface_base_url)
+        self._embedding_model = settings.huggingface_embedding_model
         # NOTE: the embedding model must match the embedding model used in embedder.py
         # because episode embeddings and chunk embeddings must be
         # in the same vector space to be comparable
