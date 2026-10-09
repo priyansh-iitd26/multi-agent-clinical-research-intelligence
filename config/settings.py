@@ -49,13 +49,13 @@ class Settings(BaseSettings):
         description = "HuggingFace model used for Agent Reasoning"
     )
 
-    langsmith_api_key : str = Field(
-        ...,
+    langsmith_api_key : str | None = Field(
+        default = None,
         description = "Langsmith API Key for Agent Tracing"
     )
 
-    langsmith_project : str = Field(
-        default = "clinical_trial_intelligence",
+    langsmith_project : str | None = Field(
+        default = None,
         description = "Langsmith project name"
     )
 
@@ -85,7 +85,7 @@ class Settings(BaseSettings):
     )
 
     db_port : int = Field(
-        default = 5432, # standard PostgreSQL port
+        default = 5433, # updated to match .env
         description = "PostgreSQL port"
     )
 
