@@ -1,0 +1,15 @@
+{"task": "Find missing results for cardiovascular trials", "expected_signal": "missing_results", "nct_id": "NCT001", "expected_confidence": 0.8}
+{"task": "Find outcome switching in oncology trials", "expected_signal": "broken_promises", "nct_id": "NCT002", "expected_confidence": 0.7}
+{"task": "Find safety discrepancies in vaccine trials", "expected_signal": "side_effect", "nct_id": "NCT003", "expected_confidence": 0.9}
+{"task": "Find silent delays in diabetes trials", "expected_signal": "timeline", "nct_id": "NCT004", "expected_confidence": 0.6}
+{"task": "Find repeat offender sponsors", "expected_signal": "track_record", "nct_id": "NCT005", "expected_confidence": 0.8}
+{"task": "Find patterns of hidden negative results", "expected_signal": "pattern_finder", "nct_id": "NCT006", "expected_confidence": 0.7}
+{"task": "Verify missing results for NCT007", "expected_signal": "missing_results", "nct_id": "NCT007", "expected_confidence": 0.8}
+{"task": "Verify outcome switch for NCT008", "expected_signal": "broken_promises", "nct_id": "NCT008", "expected_confidence": 0.9}
+{"task": "Verify safety issues for NCT009", "expected_signal": "side_effect", "nct_id": "NCT009", "expected_confidence": 0.7}
+{"task": "Verify delays for NCT010", "expected_signal": "timeline", "nct_id": "NCT010", "expected_confidence": 0.6}
+{"task": "Broad search for integrity issues", "expected_signal": "missing_results", "nct_id": "NCT011", "expected_confidence": 0.8}
+{"task": "Sponsor compliance check for PharmaX", "expected_signal": "track_record", "nct_id": "NCT012", "expected_confidence": 0.7}
+{"task": "Cross-study pattern check for DrugY", "expected_signal": "pattern_finder", "nct_id": "NCT013", "expected_confidence": 0.8}
+{"task": "Safety check for DrugZ", "expected_signal": "side_effect", "nct_id": "NCT014", "expected_confidence": 0.9}
+{"task": "Completion date verify for NCT015", "expected_signal": "timeline", "nct_id": "NCT015", "expected_confidence": 0.7}

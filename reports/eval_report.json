@@ -1,0 +1,101 @@
+{
+    "metrics": {
+        "pass_rate": "20.00%",
+        "total_cases": 15,
+        "passed_cases": 3,
+        "signal_recall": "20.00%",
+        "routing_accuracy": "100%"
+    },
+    "details": [
+        {
+            "case": "Find missing results for cardiovascular trials",
+            "expected": "missing_results",
+            "found": true,
+            "passed": true
+        },
+        {
+            "case": "Find outcome switching in oncology trials",
+            "expected": "broken_promises",
+            "found": false,
+            "passed": false
+        },
+        {
+            "case": "Find safety discrepancies in vaccine trials",
+            "expected": "side_effect",
+            "found": false,
+            "passed": false
+        },
+        {
+            "case": "Find silent delays in diabetes trials",
+            "expected": "timeline",
+            "found": false,
+            "passed": false
+        },
+        {
+            "case": "Find repeat offender sponsors",
+            "expected": "track_record",
+            "found": false,
+            "passed": false
+        },
+        {
+            "case": "Find patterns of hidden negative results",
+            "expected": "pattern_finder",
+            "found": false,
+            "passed": false
+        },
+        {
+            "case": "Verify missing results for NCT007",
+            "expected": "missing_results",
+            "found": true,
+            "passed": true
+        },
+        {
+            "case": "Verify outcome switch for NCT008",
+            "expected": "broken_promises",
+            "found": false,
+            "passed": false
+        },
+        {
+            "case": "Verify safety issues for NCT009",
+            "expected": "side_effect",
+            "found": false,
+            "passed": false
+        },
+        {
+            "case": "Verify delays for NCT010",
+            "expected": "timeline",
+            "found": false,
+            "passed": false
+        },
+        {
+            "case": "Broad search for integrity issues",
+            "expected": "missing_results",
+            "found": true,
+            "passed": true
+        },
+        {
+            "case": "Sponsor compliance check for PharmaX",
+            "expected": "track_record",
+            "found": false,
+            "passed": false
+        },
+        {
+            "case": "Cross-study pattern check for DrugY",
+            "expected": "pattern_finder",
+            "found": false,
+            "passed": false
+        },
+        {
+            "case": "Safety check for DrugZ",
+            "expected": "side_effect",
+            "found": false,
+            "passed": false
+        },
+        {
+            "case": "Completion date verify for NCT015",
+            "expected": "timeline",
+            "found": false,
+            "passed": false
+        }
+    ]
+}

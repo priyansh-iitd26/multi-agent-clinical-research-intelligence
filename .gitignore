@@ -13,3 +13,5 @@ data/
 .vscode/
 
 *.log
+
+.claude/
