@@ -2,7 +2,7 @@
 # promised to measure after the study has already begun
 
 # before a trial starts, sponsors must register exactly what they
-# plan to measure as the primary outcome - example: "Reduction in HbA1c at 26 weeks"
+# plan to measure as the primary outcome - example: "reduction in HbA1c at 26 weeks"
 
 # if the drug fails to show results on that measure, some sponsors
 # quietly change the primary outcome to something the drug did work for
