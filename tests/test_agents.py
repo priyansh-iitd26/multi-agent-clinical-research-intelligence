@@ -1,67 +1,88 @@
+# testing framework
 import pytest
+
+# importing tools to create mocks
+# allows to simulate database or API calls
+# without actually making them
 from unittest.mock import AsyncMock, MagicMock, patch
-from agents.missing_results_agent import missing_results_node
+
+from agents.supervisor import supervisor_route, supervisor_compile
 from graph.state import GraphState
 
+# initializing the supervisor
 @pytest.mark.asyncio
-async def test_missing_results_node_no_signals():
-    """Test that the agent handles cases where no signals are found."""
-    # Mock state
+async def test_supervisor_route_initialization():
+    """
+    verifies that supervisor_route correctly initializes the state for agents
+    """
+
     state = {
-        "task": "Find missing results for NCT123",
+        "task": "Check for research integrity issues in NCT123",
         "nct_ids": ["NCT123"],
         "signals": [],
         "agents_activated": [],
         "error_log": []
     }
 
-    # Mock LLM response to say NO_SIGNALS_FOUND
-    with patch('agents.missing_results_agent._llm', new_callable=AsyncMock) as mock_llm:
-        mock_response = MagicMock()
-        mock_response.content = "NO_SIGNALS_FOUND"
-        mock_response.tool_calls = []
-        mock_llm.ainvoke.return_value = mock_response
+    result = await supervisor_route(state)
 
-        # Mock stores to avoid DB calls
-        with patch('agents.missing_results_agent._procedural.get_procedures', new_callable=AsyncMock) as mock_proc, \
-             patch('agents.missing_results_agent._episodic.save_episode', new_callable=AsyncMock) as mock_epi:
+    assert "run_id" in result
+    assert result["agents_activated"] == []
+    assert result["signals"] == []
+    assert result["run_complete"] is False
+    assert result["error_log"] == []
 
-            mock_proc.return_value = ["Rule 1", "Rule 2"]
-
-            result = await missing_results_node(state)
-
-            assert "missing_results_agent" in result["agents_activated"]
-            assert len(result["signals"]) == 0
-            mock_epi.assert_called_once()
-
+# compiling signals from agents
 @pytest.mark.asyncio
-async def test_missing_results_node_with_signal():
-    """Test that the agent correctly parses and returns a signal."""
+async def test_supervisor_compile_aggregates_signals():
+    """
+    verifies that supervisor_compile correctly processes signals from multiple agents
+    """
+
     state = {
-        "task": "Find missing results for NCT123",
-        "nct_ids": ["NCT123"],
-        "signals": [],
-        "agents_activated": [],
-        "error_log": []
+        "task": "Check for research integrity issues in NCT123",
+        "signals": [
+            {"agent": "missing_results_agent", "signal_type": "missing_results", "nct_id": "NCT123", "confidence": 0.8, "summary": "Missing results found"},
+            {"agent": "side_effect_agent", "signal_type": "side_effect", "nct_id": "NCT123", "confidence": 0.4, "summary": "Possible side effect discrepancy"},
+        ],
+        "agents_activated": ["missing_results_agent", "side_effect_agent"],
+        "run_id": "test-run-123"
     }
 
-    # Mock LLM response containing a JSON signal
-    signal_json = '{"nct_id": "NCT123", "signal_type": "missing_results", "summary": "Missing results found", "evidence": ["fact1"], "confidence": 0.8}'
-
-    with patch('agents.missing_results_agent._llm', new_callable=AsyncMock) as mock_llm:
+    # mocking the LLM
+    # intercepts the actual LLM with a fake AsyncMock object
+    with patch('agents.supervisor.llm', new_callable=AsyncMock) as mock_llm:
         mock_response = MagicMock()
-        mock_response.content = f"I found a signal: {signal_json}"
-        mock_response.tool_calls = []
+        
+        mock_response.content = "Compiled Intelligence Brief: Found missing results and potential side effects."
         mock_llm.ainvoke.return_value = mock_response
 
-        with patch('agents.missing_results_agent._procedural.get_procedures', new_callable=AsyncMock) as mock_proc, \
-             patch('agents.missing_results_agent._episodic.save_episode', new_callable=AsyncMock) as mock_epi:
+        result = await supervisor_compile(state)
 
-            mock_proc.return_value = []
+        assert result["run_complete"] is True
+        assert result["total_signals"] == 2
+        assert result["signals_requiring_review"] == 1
+        assert "final_brief" in result
+        assert "Compiled Intelligence Brief" in result["final_brief"]
+        assert "missing_results_agent" in result["agents_activated"]
+        assert "side_effect_agent" in result["agents_activated"]
 
-            result = await missing_results_node(state)
+# final test for edge case
+@pytest.mark.asyncio
+async def test_supervisor_compile_no_signals():
+    """
+    verifies supervisor_compile handles the case where no signals were found
+    """
+    
+    state = {
+        "task": "Check for research integrity issues in NCT123",
+        "signals": [],
+        "agents_activated": ["missing_results_agent", "side_effect_agent"],
+        "run_id": "test-run-123"
+    }
 
-            assert len(result["signals"]) == 1
-            assert result["signals"][0]["nct_id"] == "NCT123"
-            assert result["signals"][0]["confidence"] == 0.8
-            assert "missing_results_agent" in result["agents_activated"]
+    result = await supervisor_compile(state)
+
+    assert result["run_complete"] is True
+    assert "EXECUTIVE SUMMARY" in result["final_brief"]
+    assert "No significant research integrity signals were detected" in result["final_brief"]

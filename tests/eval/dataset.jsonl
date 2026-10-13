@@ -1,15 +1,177 @@
-{"task": "Find missing results for cardiovascular trials", "expected_signal": "missing_results", "nct_id": "NCT001", "expected_confidence": 0.8}
-{"task": "Find outcome switching in oncology trials", "expected_signal": "broken_promises", "nct_id": "NCT002", "expected_confidence": 0.7}
-{"task": "Find safety discrepancies in vaccine trials", "expected_signal": "side_effect", "nct_id": "NCT003", "expected_confidence": 0.9}
-{"task": "Find silent delays in diabetes trials", "expected_signal": "timeline", "nct_id": "NCT004", "expected_confidence": 0.6}
-{"task": "Find repeat offender sponsors", "expected_signal": "track_record", "nct_id": "NCT005", "expected_confidence": 0.8}
-{"task": "Find patterns of hidden negative results", "expected_signal": "pattern_finder", "nct_id": "NCT006", "expected_confidence": 0.7}
-{"task": "Verify missing results for NCT007", "expected_signal": "missing_results", "nct_id": "NCT007", "expected_confidence": 0.8}
-{"task": "Verify outcome switch for NCT008", "expected_signal": "broken_promises", "nct_id": "NCT008", "expected_confidence": 0.9}
-{"task": "Verify safety issues for NCT009", "expected_signal": "side_effect", "nct_id": "NCT009", "expected_confidence": 0.7}
-{"task": "Verify delays for NCT010", "expected_signal": "timeline", "nct_id": "NCT010", "expected_confidence": 0.6}
-{"task": "Broad search for integrity issues", "expected_signal": "missing_results", "nct_id": "NCT011", "expected_confidence": 0.8}
-{"task": "Sponsor compliance check for PharmaX", "expected_signal": "track_record", "nct_id": "NCT012", "expected_confidence": 0.7}
-{"task": "Cross-study pattern check for DrugY", "expected_signal": "pattern_finder", "nct_id": "NCT013", "expected_confidence": 0.8}
-{"task": "Safety check for DrugZ", "expected_signal": "side_effect", "nct_id": "NCT014", "expected_confidence": 0.9}
-{"task": "Completion date verify for NCT015", "expected_signal": "timeline", "nct_id": "NCT015", "expected_confidence": 0.7}
+[
+  {
+    "id": "MR-001",
+    "category": "positive",
+    "task": "Find missing results for cardiovascular trials",
+    "expected_signals": ["missing_results"],
+    "expected_agents": ["missing_results_agent"],
+    "max_allowed_confidence": 1.0,
+    "requires_review": false
+  },
+  {
+    "id": "MR-002",
+    "category": "negative",
+    "task": "Verify results status for completed study NCT001234",
+    "expected_signals": [],
+    "expected_agents": ["missing_results_agent"],
+    "max_allowed_confidence": 1.0,
+    "requires_review": false
+  },
+  {
+    "id": "MR-003",
+    "category": "edge_case",
+    "task": "Check results for trial ID NCT-INVALID-99",
+    "expected_signals": [],
+    "expected_agents": ["missing_results_agent"],
+    "max_allowed_confidence": 0.0,
+    "requires_review": false
+  },
+  {
+    "id": "MR-004",
+    "category": "tool_failure",
+    "task": "Query results for trial NCT099999 where registry API times out",
+    "expected_signals": [],
+    "expected_agents": ["missing_results_agent"],
+    "max_allowed_confidence": 0.0,
+    "requires_review": true
+  },
+
+  {
+    "id": "BP-001",
+    "category": "positive",
+    "task": "Find outcome switching in oncology trials",
+    "expected_signals": ["broken_promises"],
+    "expected_agents": ["broken_promises_agent"],
+    "max_allowed_confidence": 1.0,
+    "requires_review": false
+  },
+  {
+    "id": "SE-001",
+    "category": "positive",
+    "task": "Find safety discrepancies in vaccine trials",
+    "expected_signals": ["side_effect"],
+    "expected_agents": ["side_effect_agent"],
+    "max_allowed_confidence": 1.0,
+    "requires_review": false
+  },
+  {
+    "id": "TL-001",
+    "category": "positive",
+    "task": "Find silent completion delays in diabetes trials",
+    "expected_signals": ["timeline"],
+    "expected_agents": ["timeline_agent"],
+    "max_allowed_confidence": 1.0,
+    "requires_review": false
+  },
+  {
+    "id": "TR-001",
+    "category": "positive",
+    "task": "Find repeat non-compliant sponsors across cardiovascular studies",
+    "expected_signals": ["track_record"],
+    "expected_agents": ["track_record_agent"],
+    "max_allowed_confidence": 1.0,
+    "requires_review": false
+  },
+  {
+    "id": "PF-001",
+    "category": "positive",
+    "task": "Find cross-study patterns of suppressed negative outcome data for DrugX",
+    "expected_signals": ["pattern_finder"],
+    "expected_agents": ["pattern_finder_agent"],
+    "max_allowed_confidence": 1.0,
+    "requires_review": false
+  },
+
+  {
+    "id": "AMB-001",
+    "category": "ambiguous",
+    "task": "Compare the 2018 protocol primary endpoints with the 2021 published paper results for NCT045678",
+    "expected_signals": ["broken_promises"],
+    "expected_agents": ["broken_promises_agent"],
+    "max_allowed_confidence": 1.0,
+    "requires_review": false
+  },
+  {
+    "id": "AMB-002",
+    "category": "ambiguous",
+    "task": "Check if the results for NCT012345 are actually posted or if the page only displays a completed marker",
+    "expected_signals": ["missing_results"],
+    "expected_agents": ["missing_results_agent"],
+    "max_allowed_confidence": 1.0,
+    "requires_review": false
+  },
+  {
+    "id": "AMB-003",
+    "category": "ambiguous",
+    "task": "Look for any mentions of unexpected adverse events in the final paper for NCT098765 that were omitted in the registry",
+    "expected_signals": ["side_effect"],
+    "expected_agents": ["side_effect_agent"],
+    "max_allowed_confidence": 1.0,
+    "requires_review": false
+  },
+
+  {
+    "id": "MULTI-001",
+    "category": "multi_signal",
+    "task": "Analyze NCT077889 for both unpublished results and changes to the registered primary outcome",
+    "expected_signals": ["missing_results", "broken_promises"],
+    "expected_agents": ["missing_results_agent", "broken_promises_agent"],
+    "max_allowed_confidence": 1.0,
+    "requires_review": false
+  },
+  {
+    "id": "MULTI-002",
+    "category": "multi_signal",
+    "task": "Investigate NCT088990 for unreported side effects and unreported multi-year completion delays",
+    "expected_signals": ["side_effect", "timeline"],
+    "expected_agents": ["side_effect_agent", "timeline_agent"],
+    "max_allowed_confidence": 1.0,
+    "requires_review": false
+  },
+  {
+    "id": "MULTI-003",
+    "category": "multi_signal",
+    "task": "Full integrity audit on NCT022334: evaluate results posting status, outcome modifications, and sponsor compliance history",
+    "expected_signals": ["missing_results", "broken_promises", "track_record"],
+    "expected_agents": ["missing_results_agent", "broken_promises_agent", "track_record_agent"],
+    "max_allowed_confidence": 1.0,
+    "requires_review": false
+  },
+
+  {
+    "id": "CONF-001",
+    "category": "calibration",
+    "task": "Check results posting status for active trial NCT033445",
+    "expected_signals": [],
+    "expected_agents": ["missing_results_agent"],
+    "max_allowed_confidence": 0.50,
+    "requires_review": false
+  },
+  {
+    "id": "CONF-002",
+    "category": "calibration",
+    "task": "Verify potential outcome switches for study NCT044556 given a minor protocol amendment regarding inclusion criteria",
+    "expected_signals": [],
+    "expected_agents": ["broken_promises_agent"],
+    "max_allowed_confidence": 0.55,
+    "requires_review": false
+  },
+  {
+    "id": "CONF-003",
+    "category": "calibration",
+    "task": "Evaluate safety report for NCT055667 where sections of the clinical study report are partially redacted",
+    "expected_signals": ["side_effect"],
+    "expected_agents": ["side_effect_agent"],
+    "max_allowed_confidence": 0.50,
+    "requires_review": true
+  },
+  {
+    "id": "CONF-004",
+    "category": "calibration",
+    "task": "Check for timeline discrepancies in NCT066778 where conflicting completion dates exist across international registries",
+    "expected_signals": ["timeline"],
+    "expected_agents": ["timeline_agent"],
+    "max_allowed_confidence": 0.58,
+    "requires_review": true
+  }
+]

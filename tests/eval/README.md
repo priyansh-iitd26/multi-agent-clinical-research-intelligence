@@ -1,6 +1,6 @@
 # Offline Evaluation Dataset
 
-This dataset contains curated test cases for the MOSAIC research integrity system.
+This dataset contains curated test cases for the the clinical trials research integrity system.
 
 ## Structure
 Each line is a JSON object containing:
