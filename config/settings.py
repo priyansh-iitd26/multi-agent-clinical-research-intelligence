@@ -43,7 +43,6 @@ class Settings(BaseSettings):
         description = "HuggingFace Model used to generate the vector embeddings"
     )
 
-    # agents would be using GPT-4o
     huggingface_chat_model : str = Field(
         default = "meta-llama/Llama-3.3-70B-Instruct",
         description = "HuggingFace model used for Agent Reasoning"
