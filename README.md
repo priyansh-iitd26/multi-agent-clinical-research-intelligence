@@ -34,23 +34,22 @@
 
 ## 📌 Project Description
 
-MOSAIC (Multi-Agent Operating System for AI Cognition) is a production
-multi-agent AI system that ingests clinical trial data from ClinicalTrials.gov
+This is a production-grade multi-agent AI system that ingests clinical trials data from ClinicalTrials.gov
 and PubMed, reasons across studies simultaneously, detects research integrity
-signals, and exposes a FastAPI REST layer — deployed on Google Cloud Run.
+signals, and exposes a FastAPI layer - deployed on Google Cloud Run.
 
 **The problem it solves:**
 About 30% of completed clinical trials never publish their results. Outcome
 switching, timeline delays, and safety discrepancies are buried across
-400,000+ government records that no single human can read simultaneously.
-MOSAIC reads all of them at once and surfaces what humans miss.
+400,000+ government records that no single human analyst can read simultaneously.
+Our system reads the studies at once and surfaces what humans usually miss.
 
 **What makes it different:**
 
-- 6 specialist agents run **in parallel** — not sequentially
+- 6 specialist agents run **in parallel** - not sequentially
 - **Three types of memory** — episodic, procedural, semantic
-- **Learns from human feedback** — rejections update agent reasoning permanently
-- **Production deployed** on GCP for under $55/month
+- **Learns from human feedback** — rejections update agents reasoning permanently
+- **Production deployed** on GCP
 
 ---
 
