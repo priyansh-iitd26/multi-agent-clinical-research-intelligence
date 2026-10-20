@@ -207,13 +207,13 @@ work-dir/
 │   ├── pubmed_client.py
 │   ├── document_parser.py
 │   ├── gcs_store.py
-│   └── run_ingestion.py            # Entry point — run this first
+│   └── run_ingestion.py            # entry point — run this first
 │
 ├── processing/
 │   ├── chunker.py
 │   ├── embedder.py
 │   ├── vector_store.py
-│   └── run_processing.py           # Entry point — run this second
+│   └── run_processing.py           # entry point — run this second
 │
 ├── memory/
 │   ├── episodic_store.py
@@ -235,8 +235,8 @@ work-dir/
 │   └── pubmed_tools.py              # 3 live PubMed tools
 │
 ├── graph/
-│   ├── state.py                     # MosaicState TypedDict
-│   ├── graph_builder.py             # Wires all agents into LangGraph
+│   ├── state.py                     # GraphState TypedDict
+│   ├── graph_builder.py             # wires all agents into LangGraph
 │   └── hitl.py                      # HITL gate + learning loop
 │
 ├── api/
@@ -250,15 +250,14 @@ work-dir/
 │       └── memory.py                # GET /api/v1/memory + /sponsors
 │
 ├── deployment/
-│   ├── Dockerfile                   # Multi-stage, AMD64
+│   ├── Dockerfile                   
 │   ├── .dockerignore
 │   └── gcp/
-│       ├── cloudsql_init.sql        # Schema — run once after Cloud SQL setup
-│       └── deploy.sh                # Full GCP deployment script
+│       ├── cloudsql_init.sql        # schema - run once after Cloud SQL setup
+│       └── deploy.sh                # full GCP deployment script
 │
-├── .env.example                     # Template — copy to .env and fill in
 ├── .gitignore
-├── pyproject.toml                   # pip install -e . for clean imports
+├── pyproject.toml                
 ├── requirements.txt
 └── README.md
 ```
