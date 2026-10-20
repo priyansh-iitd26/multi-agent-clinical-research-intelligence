@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Development
 - Install dependencies: `pip install -r requirements.txt && pip install -e .`
 - Run API locally: `uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload`
+- Explore API via Swagger UI: `http://localhost:8000/docs`
 - Run tests: `pytest tests/`
 - Run specific test file: `pytest tests/test_ingestion.py` or `pytest tests/test_processing.py`
 
@@ -24,13 +25,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 The system is a multi-agent pipeline for detecting research integrity signals in clinical trials.
 
 1. **Ingestion Layer** (`/ingestion`): Fetches raw trial data from ClinicalTrials.gov and PubMed; persists raw data in Google Cloud Storage (GCS).
-2. **Processing Layer** (`/processing`): Implements a RAG pipeline (chunking $\rightarrow$ embedding $\rightarrow$ vector storage) using PostgreSQL with `pgvector`.
+2. **Processing Layer** (`/processing`): Implements a RAG pipeline (chunking $\rightarrow$ embedding $\rightarrow$ vector storage) using OpenAI `text-embedding-3-small` and PostgreSQL with `pgvector`.
 3. **Memory Layer** (`/memory`): A unique three-tier storage system:
    - **Episodic**: Semantic search over past analysis sessions.
    - **Procedural**: Stores reasoning rules learned from human corrections (HITL).
    - **Semantic**: Maintains persistent sponsor credibility profiles.
 4. **Agent Graph** (`/agents`, `/graph`): Built with LangGraph. A **Supervisor** coordinates 6 specialist agents (Missing Results, Broken Promises, Track Record, Pattern Finder, Side Effect Checker, Timeline Analyst) that execute in parallel.
-5. **HITL Gate** (`/graph/hitl.py`): Signals are filtered by confidence. Low-confidence signals enter a review queue; human rejections update the **Procedural Memory** to permanently alter agent reasoning.
+5. **HITL Gate** (`/graph/hitl.py`): Signals are filtered by confidence. Low-confidence signals enter a review queue; human rejections trigger a feedback loop that updates the **Procedural Memory**, permanently altering how agents reason in future runs.
 6. **API Layer** (`/api`): FastAPI endpoints for triggering analyses, managing the review queue, and inspecting memory.
 
 ### Key Design Patterns
