@@ -119,11 +119,11 @@ curl -s -X POST \
 | --------------- | ---------------------------------------------- |
 | Language        | Python 3.12 async                              |
 | Agent Framework | LangGraph 0.2.6                                |
-| Reasoning ChatModel | meta-llama/Llama-3.3-70B-Instruct (https://huggingface.co/meta-llama/Llama-3.3-70B-Instruct) |
-| Embeddings      | OpenAI text-embedding-3-small (1536 dims)      |
-| API             | FastAPI + Uvicorn                              |
+| Reasoning ChatModel | meta-llama/Llama-3.3-70B-Instruct          |
+| Embeddings      | Qwen/Qwen3-Embedding-8B (1536 dims)            |
+| API             | FastAPI                                        |
 | Database        | PostgreSQL 15 + pgvector (Cloud SQL)           |
-| Vector Search   | pgvector hnsw index                            |
+| Vector Search   | pgvector HNSW index                            |
 | File Storage    | Google Cloud Storage                           |
 | Deployment      | Google Cloud Run                               |
 | Secrets         | GCP Secret Manager                             |
