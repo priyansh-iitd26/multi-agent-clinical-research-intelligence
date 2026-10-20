@@ -7,7 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Development
 - Install dependencies: `pip install -r requirements.txt && pip install -e .`
 - Run API locally: `uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload`
-- Access API Docs: `http://localhost:8000/docs`
+- Run tests: `pytest tests/`
+- Run specific test file: `pytest tests/test_ingestion.py` or `pytest tests/test_processing.py`
 
 ### Data Pipeline
 - Run Ingestion: `python3 ingestion/run_ingestion.py` (ClinicalTrials.gov/PubMed -> GCS)
@@ -15,22 +16,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Deployment
 - Deploy to GCP: `./deployment/gcp/deploy.sh`
-- Init Database: Run `deployment/gcp/cloudsql_init.sql` against the Cloud SQL instance.
+- Database Initialization: Run `deployment/gcp/cloudsql_init.sql` against the Cloud SQL instance.
 
 ## Architecture & Structure
 
 ### High-Level Flow
-1. **Ingestion** (`/ingestion`): Fetches raw trial data from ClinicalTrials.gov and PubMed; stores in GCS.
-2. **Processing** (`/processing`): Chunks documents and generates 1,536-dim embeddings; stores in PostgreSQL with `pgvector`.
-3. **Memory** (`/memory`): Three-layer system:
-   - **Episodic**: Past session history.
-   - **Procedural**: Human-in-the-loop (HITL) learned reasoning rules.
-   - **Semantic**: Sponsor credibility profiles.
-4. **Agent Graph** (`/agents`, `/graph`): A LangGraph-powered multi-agent system. A **Supervisor** routes tasks to 6 parallel specialist agents (Missing Results, Broken Promises, Track Record, Pattern Finder, Side Effect Checker, Timeline Analyst).
-5. **HITL Gate** (`/graph/hitl.py`): High-confidence signals are saved; low-confidence signals go to a review queue. Human rejections update Procedural memory.
-6. **API** (`/api`): FastAPI layer exposing analysis, signal review, and memory endpoints.
+The system is a multi-agent pipeline for detecting research integrity signals in clinical trials.
 
-### Key Directories
-- `config/`: Environment settings and logging.
-- `tools/`: Shared tools for DB search, ClinicalTrials.gov, and PubMed APIs.
-- `deployment/`: Docker and GCP infrastructure scripts.
+1. **Ingestion Layer** (`/ingestion`): Fetches raw trial data from ClinicalTrials.gov and PubMed; persists raw data in Google Cloud Storage (GCS).
+2. **Processing Layer** (`/processing`): Implements a RAG pipeline (chunking $\rightarrow$ embedding $\rightarrow$ vector storage) using PostgreSQL with `pgvector`.
+3. **Memory Layer** (`/memory`): A unique three-tier storage system:
+   - **Episodic**: Semantic search over past analysis sessions.
+   - **Procedural**: Stores reasoning rules learned from human corrections (HITL).
+   - **Semantic**: Maintains persistent sponsor credibility profiles.
+4. **Agent Graph** (`/agents`, `/graph`): Built with LangGraph. A **Supervisor** coordinates 6 specialist agents (Missing Results, Broken Promises, Track Record, Pattern Finder, Side Effect Checker, Timeline Analyst) that execute in parallel.
+5. **HITL Gate** (`/graph/hitl.py`): Signals are filtered by confidence. Low-confidence signals enter a review queue; human rejections update the **Procedural Memory** to permanently alter agent reasoning.
+6. **API Layer** (`/api`): FastAPI endpoints for triggering analyses, managing the review queue, and inspecting memory.
+
+### Key Design Patterns
+- **Parallel Agent Execution**: Agents run concurrently rather than sequentially to handle large-scale study reasoning.
+- **HITL Feedback Loop**: Human decisions directly update the agent's procedural "rules of reasoning" stored in the database.
+- **Async IO**: Heavy use of `asyncio` and `asyncpg` for high-throughput data ingestion and API responses.
