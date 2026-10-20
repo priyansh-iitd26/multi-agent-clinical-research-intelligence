@@ -196,137 +196,72 @@ curl -s -X POST \
 
 ## 📁 Project Structure
 
-**mosaic/**
-
-**│**
-
-**├── config/**
-
-**│**   ├── settings.py        **      # Pydantic **BaseSettings, all env vars
-
-**│   └── **logging_config.py        # **Centralised logging setup**
-
-**│**
-
-**├── **ingestion/
-
-**│   ├── **clinical_trials_client.py
-
-**│   ├── **pubmed_client.py
-
-**│   ├── **document_parser.py
-
-**│   ├── gcs_store.py**
-
-**│   └── run_ingestion.py     **    # Entry point — run **this first**
-
-**│**
-
-**├── processing/**
-
-**│   ├── chunker.py**
-
-**│  ** ├── embedder.py
-
-**│   **├── vector_store.py
-
-**│   **└── run_processing.py    **    # Entry point — run **this second
-
-**│**
-
-**├── memory/**
-
-**│  ** ├── episodic_store.py
-
-**│   ├── **procedural_store.py
-
-**│   └── **semantic_store.py
-
-**│**
-
-**├── agents/**
-
-**│   ├── **supervisor.py
-
-**│   ├── **broken_promises_agent.py
-
-**│   ├── **missing_results_agent.py
-
-**│   ├── **track_record_agent.py
-
-**│   ├── **pattern_finder_agent.py
-
-**│   ├── **side_effect_agent.py
-
-**│   └── **timeline_agent.py
-
-**│**
-
-**├── tools/**
-
-**│   ├── **search_tools.py          # 8 database + **memory tools**
-
-**│   ├── clinical_tools.py  **      # 4 live ClinicalTrials.gov tools
-
-**│   └── pubmed_tools.py          # 3 **live PubMed tools
-
-**│**
-
-**├── graph/**
-
-**│   ├── **state.py                 # MosaicState **TypedDict**
-
-**│   ├── graph_builder.py      **   # Wires all agents into LangGraph
-
-**│  ** └── hitl.py                  # HITL **gate + learning loop**
-
-**│**
-
-**├── api/**
-
-**│   ├── **main.py                  # FastAPI app **+ lifespan**
-
-**│   ├── schemas.py    **           # All Pydantic **request/response models**
-
-**│   ├── **dependencies.py          # Shared **resource singletons**
-
-**│   └── routers/**
-
-**│  **     ├── analysis.py          # POST **/api/v1/analyze**
-
-**│       ├── signals.py  **         # GET /api/v1/signals
-
-**│       **├── review.py            # GET + PATCH **/api/v1/review**
-
-**│       └── memory.py    **        # GET /api/v1/memory + **/sponsors**
-
-**│**
-
-**├── deployment/**
-
-**│   ├── **Dockerfile               # Multi-stage, **AMD64**
-
-**│   ├── .dockerignore**
-
-**│   └── **gcp/
-
-**│       ├── cloudsql_init.sql    # **Schema — run once after Cloud SQL setup
-
-**│       └── deploy.sh            # **Full GCP deployment script
-
-**│**
-
-**├── **.env.example                 # **Template — copy to .env and fill in**
-
-**├── **.gitignore
-
-**├── pyproject.toml           **    # pip install -e . for clean **imports**
-
-**├── requirements.txt**
-
-**└── **README.md
-
----
+```text
+mosaic/
+├── config/
+│   ├── settings.py                 # Pydantic BaseSettings, all environment variables
+│   └── logging_config.py           # Centralised logging setup
+│
+├── ingestion/
+│   ├── clinical_trials_client.py
+│   ├── pubmed_client.py
+│   ├── document_parser.py
+│   ├── gcs_store.py
+│   └── run_ingestion.py            # Entry point — run this first
+│
+├── processing/
+│   ├── chunker.py
+│   ├── embedder.py
+│   ├── vector_store.py
+│   └── run_processing.py           # Entry point — run this second
+│
+├── memory/
+│   ├── episodic_store.py
+│   ├── procedural_store.py
+│   └── semantic_store.py
+│
+├── agents/
+│   ├── supervisor.py
+│   ├── broken_promises_agent.py
+│   ├── missing_results_agent.py
+│   ├── track_record_agent.py
+│   ├── pattern_finder_agent.py
+│   ├── side_effect_agent.py
+│   └── timeline_agent.py
+│
+├── tools/
+│   ├── search_tools.py              # 8 database + memory tools
+│   ├── clinical_tools.py            # 4 live ClinicalTrials.gov tools
+│   └── pubmed_tools.py              # 3 live PubMed tools
+│
+├── graph/
+│   ├── state.py                     # MosaicState TypedDict
+│   ├── graph_builder.py             # Wires all agents into LangGraph
+│   └── hitl.py                      # HITL gate + learning loop
+│
+├── api/
+│   ├── main.py                      # FastAPI app + lifespan
+│   ├── schemas.py                   # All Pydantic request/response models
+│   ├── dependencies.py              # Shared resource singletons
+│   └── routers/
+│       ├── analysis.py              # POST /api/v1/analyze
+│       ├── signals.py               # GET /api/v1/signals
+│       ├── review.py                # GET + PATCH /api/v1/review
+│       └── memory.py                # GET /api/v1/memory + /sponsors
+│
+├── deployment/
+│   ├── Dockerfile                   # Multi-stage, AMD64
+│   ├── .dockerignore
+│   └── gcp/
+│       ├── cloudsql_init.sql        # Schema — run once after Cloud SQL setup
+│       └── deploy.sh                # Full GCP deployment script
+│
+├── .env.example                     # Template — copy to .env and fill in
+├── .gitignore
+├── pyproject.toml                   # pip install -e . for clean imports
+├── requirements.txt
+└── README.md
+```
 
 ## 🚀 Getting Started
 
