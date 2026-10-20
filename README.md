@@ -197,7 +197,7 @@ curl -s -X POST \
 ## 📁 Project Structure
 
 ```text
-mosaic/
+work-dir/
 ├── config/
 │   ├── settings.py                 # Pydantic BaseSettings, all environment variables
 │   └── logging_config.py           # Centralised logging setup
