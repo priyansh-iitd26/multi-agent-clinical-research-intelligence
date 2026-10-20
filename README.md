@@ -133,54 +133,66 @@ curl -s -X POST \
 
 ---
 
-## 🏗 Architecture
+# 🏗️ Architecture
 
-**DATA SOURCES**
-├── **ClinicalTrials.gov** API v2 (400K+ studies, free, no auth)
-└── **PubMed eUtils** API (research papers, free, no auth)   
+## 1. DATA SOURCES
 
-**↓**
+- **ClinicalTrials.gov API v2** — 400K+ studies, free, no authentication required.
+- **PubMed eUtils API** — Research papers, free, no authentication required.
 
-**INGESTION LAYER**
-├── **clinical_trials_client.py** (`async`, rate limited, retry)
-├── **pubmed_client.py** (esearch -> efetch, XML parse)
-├── **document_parser.py** (raw JSON -> Pydantic models)
-└── **gcs_store.py** (save raw + processed data to GCS)   
+↓
 
-**↓**
+## 2. INGESTION LAYER
 
-**PROCESSING LAYER**
-├── **chunker.py** (500-word chunks, 50-word overlap)
-├── **embedder.py** (batch 50, 1536 dims)
-└── **vector_store.py** (`asyncpg` + `pgvector` cosine search)   
+- **`clinical_trials_client.py`** — Asynchronous requests, rate limiting, and retries.
+- **`pubmed_client.py`** — ESearch → EFetch, followed by XML parsing.
+- **`document_parser.py`** — Converts raw JSON into Pydantic models.
+- **`gcs_store.py`** — Saves raw and processed data to Google Cloud Storage (GCS).
 
-**↓**
+↓
 
-**MEMORY LAYER**
-├── **episodic_store.py** (past sessions, semantic search)
-├── **procedural_store.py** (reasoning rules + HITL learning)
-└── **semantic_store.py** (sponsor credibility profiles)
+## 3. PROCESSING LAYER
 
-**↓**
+- **`chunker.py`** — Splits documents into 500-word chunks with a 50-word overlap.
+- **`embedder.py`** — Generates 1,536-dimensional embeddings in batches of 50.
+- **`vector_store.py`** — Uses `asyncpg` and `pgvector` for cosine-similarity search.
 
-**AGENT GRAPH** (LangGraph, **PARALLEL EXECUTION**)
-├── **Supervisor Agent** (routes + compiles brief)
-├── **Missing Results Agent** (threshold 0.65)
-├── **Broken Promises Agent** (threshold 0.60)
-├── **Track Record Agent** (threshold 0.70)
-├── **Pattern Finder Agent** (threshold 0.65)
-├── **Side Effect Checker** (threshold 0.55)
-└── **Timeline Analyst** (threshold 0.60)
+↓
 
-**↓**
+## 4. MEMORY LAYER
 
-**HITL**
-├── High confidence -> `signals` table (direct save)
-└── Low confidence -> review queue -> human decision -> procedural memory
+- **`episodic_store.py`** — Stores past sessions and supports semantic retrieval.
+- **`procedural_store.py`** — Stores reasoning rules and supports human-in-the-loop (HITL) learning.
+- **`semantic_store.py`** — Maintains sponsor credibility profiles.
 
-**↓**
+↓
 
-**FASTAPI** (9 endpoints) -> GOOGLE CLOUD RUN
+## 5. AGENT GRAPH
+
+**Framework:** LangGraph  
+**Execution:** Parallel execution of specialist agents, coordinated by the supervisor.
+
+1. **Supervisor Agent** — Routes tasks and compiles the final brief.
+2. **Missing Results Agent** — Confidence threshold: `0.65`.
+3. **Broken Promises Agent** — Confidence threshold: `0.60`.
+4. **Track Record Agent** — Confidence threshold: `0.70`.
+5. **Pattern Finder Agent** — Confidence threshold: `0.65`.
+6. **Side Effect Checker** — Confidence threshold: `0.55`.
+7. **Timeline Analyst** — Confidence threshold: `0.60`.
+
+↓
+
+## 6. HUMAN-IN-THE-LOOP (HITL)
+
+- **High-confidence findings** — Saved directly to the `signals` table.
+- **Low-confidence findings** — Sent to a review queue for a human decision; the feedback updates procedural memory.
+
+↓
+
+## 7. API & DEPLOYMENT
+
+- **FastAPI** — Exposes 9 endpoints.
+- **Deployment platform** — Google Cloud Run.
 
 ## 📁 Project Structure
 
