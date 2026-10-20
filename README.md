@@ -107,9 +107,9 @@ curl -s -X POST \
 
 ### Production Infrastructure
 
-- Serverless on Cloud Run — scales to zero, costs nothing when idle
-- PostgreSQL + pgvector — semantic search over 1536-dimensional embeddings
-- 9 REST endpoints with FastAPI + auto-generated Swagger docs
+- Serverless on Cloud Run - scales to zero, costs nothing when idle
+- PostgreSQL + pgvector - semantic search over 1536-dimensional embeddings
+- 9 endpoints with FastAPI + auto-generated Swagger docs
 
 ---
 
@@ -136,72 +136,51 @@ curl -s -X POST \
 ## 🏗 Architecture
 
 **DATA SOURCES**
-
-**├**── ClinicalTrials.gov API v2  **  (400K+ studies, free, no **auth)
-
-**└── PubMed eUtils API **           (research papers, **free, no auth)**
+├── **ClinicalTrials.gov** API v2 (400K+ studies, free, no auth)
+└── **PubMed eUtils** API (research papers, free, no auth)   
 
 **↓**
 
-**ING**ESTION LAYER
+**INGESTION LAYER**
+├── **clinical_trials_client.py** (`async`, rate limited, retry)
+├── **pubmed_client.py** (esearch -> efetch, XML parse)
+├── **document_parser.py** (raw JSON -> Pydantic models)
+└── **gcs_store.py** (save raw + processed data to GCS)   
 
-**├── **clinical_trials_client.py    (async, **rate limited, retry)**
-
-**├── **pubmed_client.py             (esearch → **efetch, XML parse)**
-
-**├── **document_parser.py           (raw JSON **→ Pydantic models)**
-
-**└── **gcs_store.py                 (save raw **+ processed to GCS)**
-
-**    ↓**
+**↓**
 
 **PROCESSING LAYER**
-
-**├── **chunker.py                   **(500-word chunks, 50-word **overlap)
-
-**├── embedder.py            **      (OpenAI, batch 50, **1536 dims)**
-
-**└── vector_store.py **             (asyncpg + **pgvector cosine search)**
+├── **chunker.py** (500-word chunks, 50-word overlap)
+├── **embedder.py** (batch 50, 1536 dims)
+└── **vector_store.py** (`asyncpg` + `pgvector` cosine search)   
 
 **↓**
 
-**MEMORY LAYER (LangMem)**
-
-**├── **episodic_store.py            (past **sessions, semantic search)**
-
-**├── **procedural_store.py          (reasoning **rules + HITL learning)**
-
-**└── **semantic_store.py            (sponsor **credibility profiles)**
+**MEMORY LAYER**
+├── **episodic_store.py** (past sessions, semantic search)
+├── **procedural_store.py** (reasoning rules + HITL learning)
+└── **semantic_store.py** (sponsor credibility profiles)
 
 **↓**
 
-**AGENT **GRAPH (LangGraph + GPT-4o — **PARALLEL EXECUTION)**
-
-**├── **Supervisor                   **(routes + compiles brief)**
-
-**├── **Missing Results Agent        **(threshold 0.65)**
-
-**├── Broken **Promises Agent        (threshold **0.60)**
-
-**├── Track Record Agent **          (threshold 0.70)
-
-**├─**─ Pattern Finder Agent    **     (threshold 0.65)**
-
-**├── Side **Effect Checker          **(threshold 0.55)**
-
-**└── Timeline **Analyst             (threshold **0.60)**
+**AGENT GRAPH** (LangGraph, **PARALLEL EXECUTION**)
+├── **Supervisor Agent** (routes + compiles brief)
+├── **Missing Results Agent** (threshold 0.65)
+├── **Broken Promises Agent** (threshold 0.60)
+├── **Track Record Agent** (threshold 0.70)
+├── **Pattern Finder Agent** (threshold 0.65)
+├── **Side Effect Checker** (threshold 0.55)
+└── **Timeline Analyst** (threshold 0.60)
 
 **↓**
 
-**HITL GATE**
-
-**├── High confidence → **signals table (direct save)
-
-**└──** Low confidence → **review queue → human decision → **procedural memory
+**HITL**
+├── High confidence -> `signals` table (direct save)
+└── Low confidence -> review queue -> human decision -> procedural memory
 
 **↓**
 
-**FAS**TAPI (9 endpoints) → **GOOGLE CLOUD RUN**
+**FASTAPI** (9 endpoints) -> GOOGLE CLOUD RUN
 
 ## 📁 Project Structure
 
