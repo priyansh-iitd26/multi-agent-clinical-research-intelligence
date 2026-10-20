@@ -28,7 +28,6 @@
 - [Troubleshooting](#-troubleshooting)
 - [Roadmap](#-roadmap)
 - [License](#-license)
-- [Contact](#-contact)
 
 ---
 
