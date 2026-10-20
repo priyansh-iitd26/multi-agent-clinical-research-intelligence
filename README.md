@@ -269,7 +269,7 @@ work-dir/
 - Python 3.12+
 - Docker Desktop (for deployment)
 - Google Cloud account with billing enabled
-- OpenAI API key
+- HuggingFace Access Token
 
 ### 1. Clone the repository
 
@@ -282,7 +282,7 @@ cd mosaic
 
 ```bash
 python3 -m venv .venv
-source .venv/bin/activate
+.venv\Scripts\activate  # On Mac: source .venv/bin/activate 
 ```
 
 ### 3. Install dependencies
@@ -346,7 +346,6 @@ cp .env.example .env
 ```bash
 python3 ingestion/run_ingestion.py
 # Downloads studies from ClinicalTrials.gov and PubMed → saves to GCS
-# Expected: ~5-10 minutes for 150 studies
 ```
 
 ### 8. Run processing pipeline
@@ -354,10 +353,15 @@ python3 ingestion/run_ingestion.py
 ```bash
 python3 processing/run_processing.py
 # Chunks studies, generates embeddings, saves to Cloud SQL
-# Expected: ~3-5 minutes, costs ~$0.001 in OpenAI API calls
 ```
 
-### 9. Run the API locally
+### 9. Run tests (Optional)
+
+```bash
+pytest tests/
+```
+
+### 10. Run the API locally
 
 ```bash
 uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
@@ -368,13 +372,9 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 
 ## 🔐 Environment Variables
 
-Copy `.env.example` to `.env` and fill in all values:
-
 ```env
-# OpenAI
-OPENAI_API_KEY=sk-...
-OPENAI_EMBEDDING_MODEL=text-embedding-3-small
-OPENAI_CHAT_MODEL=gpt-4o
+# HuggingFace
+HUGGINGFACE_API_KEY=your-huggingface-api-key
 
 # GCP
 GCP_PROJECT_ID=your-project-id
@@ -382,7 +382,7 @@ GCP_REGION=us-central1
 GCS_BUCKET_NAME=your-bucket-name
 
 # Cloud SQL
-DB_HOST=34.XXX.XXX.XXX          # Public IP for local dev
+DB_HOST=34.XXX.XXX.XXX          # public IP for local dev
 DB_PORT=5432
 DB_NAME=clinical_trial_db
 DB_USER=mosaic_user
@@ -400,8 +400,14 @@ API_ENV=development
 
 ## 📡 Usage
 
-### Run an analysis
+The system is operated primarily through the FastAPI API.
 
+### 🧪 Local Testing & Exploration
+If you are running the system locally, you can use the built-in Swagger UI:
+`http://localhost:8000/docs`
+
+### 🔍 Running an Analysis
+Trigger the multi-agent graph to research a specific integrity signal:
 ```bash
 curl -s -X POST \
   -H "Content-Type: application/json" \
@@ -409,14 +415,16 @@ curl -s -X POST \
   http://localhost:8000/api/v1/analyze | python3 -m json.tool
 ```
 
-### Check the review queue
+### ⚖️ Human-in-the-Loop (HITL) Workflow
+Low-confidence signals are routed to the review queue for expert validation.
 
+**1. Check the review queue:**
 ```bash
 curl -s http://localhost:8000/api/v1/review/queue | python3 -m json.tool
 ```
 
-### Submit a human review decision
-
+**2. Submit a review decision:**
+Decision can be `approve`, `reject`, or `edit`. Rejections update the **Procedural Memory**, changing how agents reason in the future.
 ```bash
 curl -s -X PATCH \
   -H "Content-Type: application/json" \
@@ -424,14 +432,15 @@ curl -s -X PATCH \
   http://localhost:8000/api/v1/review/QUEUE_ID_HERE | python3 -m json.tool
 ```
 
-### Search agent memory
+### 🧠 Memory Inspection
+Inspect what the agents have learned over time.
 
+**Search episodic memory (past sessions):**
 ```bash
 curl -s "http://localhost:8000/api/v1/memory/episodes?query=missing+results+sponsor" | python3 -m json.tool
 ```
 
-### View agent reasoning rules
-
+**View agent-specific reasoning rules (procedural memory):**
 ```bash
 curl -s http://localhost:8000/api/v1/memory/procedures/missing_results_agent | python3 -m json.tool
 ```
@@ -440,68 +449,40 @@ curl -s http://localhost:8000/api/v1/memory/procedures/missing_results_agent | p
 
 ## 📚 API Documentation
 
-| Method    | Endpoint                              | Description                           |
-| --------- | ------------------------------------- | ------------------------------------- |
-| `POST`  | `/api/v1/analyze`                   | Trigger full analysis run             |
-| `GET`   | `/api/v1/signals`                   | List all generated signals            |
-| `GET`   | `/api/v1/signals/{id}`              | Get one signal by ID                  |
-| `GET`   | `/api/v1/review/queue`              | Get pending human review items        |
-| `PATCH` | `/api/v1/review/{id}`               | Submit approve/reject/edit decision   |
-| `GET`   | `/api/v1/memory/episodes`           | Search past agent sessions            |
-| `GET`   | `/api/v1/memory/procedures/{agent}` | Get agent reasoning rules             |
-| `GET`   | `/api/v1/sponsors`                  | List all sponsor profiles             |
-| `GET`   | `/api/v1/sponsors/{name}`           | Get one sponsor's credibility profile |
-| `GET`   | `/api/v1/health`                    | System health check                   |
-
-Full interactive documentation available at `/docs` (Swagger UI) when running locally.
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/v1/analyze` | Trigger full multi-agent analysis run |
+| `GET` | `/api/v1/signals` | List all detected integrity signals |
+| `GET` | `/api/v1/signals/{id}` | Get detailed evidence for one signal |
+| `GET` | `/api/v1/review/queue` | Fetch pending signals for human review |
+| `PATCH` | `/api/v1/review/{id}` | Submit human decision (updates procedural memory) |
+| `GET` | `/api/v1/memory/episodes` | Semantic search over past analysis sessions |
+| `GET` | `/api/v1/memory/procedures/{agent}` | Retrieve current reasoning rules for a specific agent |
+| `GET` | `/api/v1/sponsors` | List all tracked sponsor credibility profiles |
+| `GET` | `/api/v1/sponsors/{name}` | Get a specific sponsor's integrity profile |
+| `GET` | `/api/v1/health` | System health & dependency check |
 
 ---
 
 ## ☁️ Deployment
 
 ### Deploy to Google Cloud Run
+The system is designed for serverless deployment on GCP to minimize costs.
 
 ```bash
 # Make script executable (first time only)
 chmod +x deployment/gcp/deploy.sh
 
-# Run full deployment
+# Run full deployment (Builds image -> Pushes to GCR -> Deploys to Cloud Run)
 ./deployment/gcp/deploy.sh
 ```
 
-Or run manually step by step:
+**Manual Deployment Steps:**
+1. **Build & Push**: Use `docker buildx build --platform linux/amd64` to create an image compatible with Cloud Run.
+2. **Deploy**: Use `gcloud run deploy` with 2Gi Memory and 2 CPUs to handle the parallel agent graph execution.
 
-```bash
-# 1. Build and push image (AMD64 required for Cloud Run)
-docker buildx build \
-  --platform linux/amd64 \
-  --tag gcr.io/YOUR_PROJECT_ID/mosaic-api:latest \
-  --file deployment/Dockerfile \
-  --push .
-
-# 2. Deploy to Cloud Run
-gcloud run deploy mosaic-api \
-  --image=gcr.io/YOUR_PROJECT_ID/mosaic-api:latest \
-  --platform=managed \
-  --region=us-central1 \
-  --memory=2Gi \
-  --cpu=2 \
-  --port=8000 \
-  --project=YOUR_PROJECT_ID
-```
-
-### Cost breakdown
-
-| Service         | Running                                          | Idle (SQL stopped) |
-| --------------- | ------------------------------------------------ | ------------------ |
-| Cloud Run       | ~$3-8/month | $0 (scales to zero)                |                    |
-| Cloud SQL       | ~$15-18/month | ~$0.50/month                     |                    |
-| Cloud Storage   | ~$0.03/month | ~$0.03/month                      |                    |
-| OpenAI API      | ~$15-25/month | $0                               |                    |
-| **Total** | **~$35-55/month** | **~$0.53/month** |                    |
-
-### Stop Cloud SQL when not in use
-
+### Cost Optimization
+To avoid ongoing Cloud SQL costs during development:
 ```bash
 gcloud sql instances patch clinical-trial-db \
   --activation-policy=NEVER \
@@ -510,21 +491,17 @@ gcloud sql instances patch clinical-trial-db \
 
 ---
 
-
-
 ## 🗺 Roadmap
-
-- [ ] Add evaluation layer with LangSmith evals
-- [ ] Build a Streamlit dashboard for signal review
-- [ ] Add FDA adverse event database as a third data source
-- [ ] Implement scheduled runs via Cloud Scheduler
-- [ ] Add email alerts when high-confidence signals are generated
-- [ ] Build sponsor comparison feature across multiple organisations
-- [ ] Add support for international trial registries (EudraCT, ISRCTN)
-- [ ] Implement fine-tuned embedding model for clinical domain
+- [ ] **Evaluation Layer**: Integrate LangSmith for systematic agent performance evals.
+- [ ] **Visual Dashboard**: Build a Streamlit interface for the HITL review queue.
+- [ ] **Expanded Data**: Integrate FDA adverse event databases as a third primary source.
+- [ ] **Automation**: Implement Cloud Scheduler for weekly integrity sweeps.
+- [ ] **Alerting**: Email/Slack notifications for high-confidence critical signals.
+- [ ] **Comparison**: Cross-sponsor integrity benchmarking.
+- [ ] **Global Reach**: Support for EudraCT and ISRCTN registries.
+- [ ] **Domain Tuning**: Fine-tune embedding model specifically for clinical trial terminology.
 
 ---
 
 ## 📄 License
-
 MIT License — see [LICENSE](LICENSE) for details.
