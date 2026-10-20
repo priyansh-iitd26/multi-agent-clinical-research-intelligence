@@ -15,5 +15,3 @@ data/
 *.log
 
 .claude/
-
-*.md
