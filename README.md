@@ -53,7 +53,7 @@ Our system reads the studies at once and surfaces what humans usually miss.
 
 ---
 
-## 🎬 Demo
+## 🎬 Demo (to be updated)
 
 ```bash
 # Run a live analysis against production
@@ -87,7 +87,7 @@ curl -s -X POST \
 | Agent               | What it detects                                                           |
 | ------------------- | ------------------------------------------------------------------------- |
 | Missing Results     | Completed trials with no results posted (legal violation after 12 months) |
-| Broken Promises     | Outcome switching — goals changed mid-study                              |
+| Broken Promises     | Outcome switching - goals changed mid-study                              |
 | Track Record        | Sponsor credibility scores built over time                                |
 | Pattern Finder      | Cross-study patterns invisible to single-study readers                    |
 | Side Effect Checker | Safety gaps between official filings and published papers                 |
@@ -95,11 +95,11 @@ curl -s -X POST \
 
 ### Three-Layer Memory System
 
-- **Episodic** — agents remember what they found in past sessions
-- **Procedural** — agents learn from human corrections permanently
-- **Semantic** — sponsor knowledge base grows with every analysis run
+- **Episodic** - agents remember what they found in past sessions
+- **Procedural** - agents learn from human corrections permanently
+- **Semantic** - sponsor knowledge base grows with every analysis run
 
-### Human-in-the-Loop Gate
+### Human-in-the-Loop (HITL) Gate
 
 - Low confidence signals → human review queue
 - Rejections → written to procedural memory → agent reasons differently forever
@@ -119,7 +119,7 @@ curl -s -X POST \
 | --------------- | ---------------------------------------------- |
 | Language        | Python 3.12 async                              |
 | Agent Framework | LangGraph 0.2.6                                |
-| LLM             | GPT-4o (reasoning)                             |
+| Reasoning ChatModel | meta-llama/Llama-3.3-70B-Instruct (https://huggingface.co/meta-llama/Llama-3.3-70B-Instruct) |
 | Embeddings      | OpenAI text-embedding-3-small (1536 dims)      |
 | API             | FastAPI + Uvicorn                              |
 | Database        | PostgreSQL 15 + pgvector (Cloud SQL)           |
