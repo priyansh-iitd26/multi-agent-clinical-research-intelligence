@@ -1,27 +1,18 @@
 # this file takes every TextChunk produced by chunker.py and
-# converts it into a vector embedding -> a list of 1536 numbers
+# converts it into a vector embedding
 # that mathematically capture the meaning of that chunk
 
 # when our Missing Results agent asks "find studies where sponsor
-# never posted results", we convert that query into 1536 numbers
+# never posted results", we convert that query into a vector
 # then pgvector finds the chunks whose numbers are closest
 # to the query's numbers -> semantic search
 
-# why text-embedding-3-small AND NOT text-embedding-3-large ?
-# text-embedding-3-large produces 3072 dimensions but pgvector's
-# hnsw index has a 2000-dimension hard limit
-# we discovered this during the build — the index creation failed 
-# text-embedding-3-small produces 1536 dimensions — well within
-# the limit, cheaper, faster, and more than sufficient quality
-# for clinical trial signal detection
-
 # batching -> why we don't embed one chunk at a time:
-# if we sent one API call to OpenAIEmbeddings per chunk, 300 chunks = 300 API calls
+# if we sent one API call to Qwen3-Embedding-8B per chunk, 300 chunks = 300 API calls
 # which is very slow and expensive
-# OpenAI accepts up to 100 chunks in a single API call
-# we batch 50 at a time for fast, efficient and within OpenAI's rate limits comfortably
+# we batch 50 at a time for fast, efficient and within Qwen's rate limits comfortably
 
-# OpenAI calls are network requests and we want our program to stay responsive while waiting
+# Qwen calls are network requests and we want our program to stay responsive while waiting
 import asyncio
 
 from dataclasses import dataclass
@@ -43,20 +34,20 @@ logger = setup_logging(__name__)
 
 # configuration
 
-# how many chunks to send to OpenAIEmbedding in one API call
-# OpenAI accepts up to 100 inputs per call
+# how many chunks to send to HuggingFace Embedding in one API call
+# HuggingFace Inference API accepts batch inputs
 # we use 50 as a safe, comfortable batch size that:
-#   - stays well within OpenAI's limits
+#   - stays well within HF's limits
 #   - processes 300 chunks in just 6 API calls instead of 300
 #   - gives us a natural retry unit if one batch fails
 BATCH_SIZE = 50
 
-# how many times to retry a failed OpenAIEmbedding API call
-# OpenAI occasionally returns 429 (rate limit) or 500 (server error)
+# how many times to retry a failed HuggingFace Embedding API call
+# HF occasionally returns 429 (rate limit) or 500 (server error)
 RETRY_ATTEMPTS = 3
 
 # how long to wait between retry attempts
-# 2 seconds gives OpenAI time to recover from a rate limit hit
+# 2 seconds gives HF time to recover from a rate limit hit
 RETRY_SLEEP_SECONDS = 2
 
 # EmbeddedChunk dataclass
@@ -77,7 +68,7 @@ class EmbeddedChunk:
         chunk_index: position in the original document (0, 1, 2...)
         source:      "study" or "paper"
         word_count:  number of words in this chunk
-        embedding:   1536 floating point numbers from OpenAIEmbedding
+        embedding: list[float]
     """
 
     chunk_id : str
@@ -91,7 +82,8 @@ class EmbeddedChunk:
 # embedder class
 class Embedder:
     """
-    converts TextChunks into EmbeddedChunks using OpenAI's text-embedding-3-small model
+    converts TextChunks into EmbeddedChunks using the HuggingFace embedding model
+    defined in settings.huggingface_embedding_model
 
     processes chunks in batches of size = BATCH_SIZE for efficiency
     automatically retries failed API calls up to RETRY_ATTEMPTS times
@@ -116,14 +108,14 @@ class Embedder:
         converts a list of TextChunks into EmbeddedChunks
 
         splits the input into batches of BATCH_SIZE and processes
-        each batch with one OpenAI API call
+        each batch with one HuggingFace API call
 
         args:
             chunks: List of TextChunk objects from chunker.py
 
         returns:
             a list of EmbeddedChunk objects — same chunks but now
-            each has a 1536-number vector embedding attached
+            each has a vector embedding attached
             any chunk that fails to embed is skipped (not fatal)
         """
 
@@ -255,10 +247,10 @@ class Embedder:
 
     async def _embed_batch(self, batch: list[TextChunk]) -> list[EmbeddedChunk]:
         """
-        makes one OpenAI API call to embed an entire batch of chunks
+        makes one HuggingFace API call to embed an entire batch of chunks
 
-        this is the method that actually talks to OpenAI
-        it sends up to BATCH_SIZE chunk texts in one request 
+        this is the method that actually talks to HuggingFace
+        it sends up to BATCH_SIZE chunk texts in one request
         and gets back one embedding per chunk
 
         args:
@@ -268,7 +260,7 @@ class Embedder:
             list of EmbeddedChunks with embeddings attached
 
         raises:
-            exception: if the OpenAI API call fails
+            exception: if the HuggingFace API call fails
                        ** the caller (_embed_batch_with_retry) handles this
         """
 
@@ -278,12 +270,12 @@ class Embedder:
 
         response = await self._client.embeddings.create(
             model = self._model,
-            # value: "text-embedding-3-small"
-            # this produces 1536-dimensional embeddings
-
-            input = texts
+            input = texts,
+            # We force dimensions to 1536 to maintain compatibility with
+            # our PostgreSQL pgvector schema constraints.
+            dimensions = 1536
             # the list of texts to embed
-            # OpenAI processes ALL of them in one shot (one API call)
+            # HF processes ALL of them in one shot (one API call)
             # and returns one embedding per text in the same order
         )
 
@@ -324,7 +316,5 @@ class Embedder:
             f"embedding_dims = {len(embedded_chunks[0].embedding) if embedded_chunks else 0}"
         )
         # logging the embedding dimensions as a sanity check
-        # it should always show 1536 for text-embedding-3-small
-        # if it ever shows something different => something is wrong
 
         return embedded_chunks

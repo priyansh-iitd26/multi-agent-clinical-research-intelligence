@@ -75,7 +75,7 @@ async def run_ingestion():
 
     downloads studies from ClinicalTrials.gov for every condition
     in SEARCH_CONDITIONS, saves them to GCS bucket (both raw and cleaned),
-    then does the same for any related PubMed papers
+    then does the same for any related PubMed papers (for each fetched study)
     """
     logger.info("*" * 50)
     logger.info("Starting the ingestion pipeline!")

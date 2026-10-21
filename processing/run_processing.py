@@ -5,7 +5,7 @@
 # 2. Saves each study's metadata into the Cloud SQL studies table
 #    (required first because chunks have a foreign key to studies)
 # 3. Splits each study's text into overlapping chunks (chunker.py)
-# 4. Converts each chunk into 1536 numbers via OpenAI (embedder.py)
+# 4. Converts each chunk into 1536 numbers via an embedding model (embedder.py)
 # 5. Saves chunks + embeddings into Cloud SQL chunks table (vector_store.py)
 
 # NOTE: chunks table has: nct_id REFERENCES studies(nct_id)
@@ -123,13 +123,11 @@ async def run_processing():
         logger.info(f"Total chunks created: {len(all_chunks)}")
 
         # step 4: embed all chunks
-        logger.info("Embedding chunks via OpenAI text-embedding-3-small...")
+        logger.info("Embedding chunks via the embedding model...")
 
         embedded_chunks = await embedder.embed_chunks(all_chunks)
-        # this is the step that costs OpenAI API credit
-        # embed_chunks() sends chunks in batches of 50 to the OpenAI's embedding model
+        # embed_chunks() sends chunks in batches of 50 to the embedding model
         # each chunk comes back with 1536 numbers attached
-        # $0.02 per million tokens is the pricing of OpenAI text-embedding-3-small
 
         logger.info(f"Total chunks embedded: {len(embedded_chunks)}")
 
