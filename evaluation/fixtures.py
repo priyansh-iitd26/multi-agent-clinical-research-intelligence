@@ -1,11 +1,22 @@
 import json
+from enum import Enum
 from typing import List, Dict, Any
-from evaluation.eval_runner import EvalStatus
+
+class EvalStatus(Enum):
+    PASS = "PASS"
+    FAIL = "FAIL"
+    SKIP = "SKIP"
+    BLOCKED = "BLOCKED"
+    INCONCLUSIVE = "INCONCLUSIVE"
+    ERROR = "ERROR"
 
 class FixtureManager:
     """
     Handles loading and validation of versioned evaluation fixtures.
     """
+
+
+
     def __init__(self, fixture_dir: str):
         self.fixture_dir = fixture_dir
 
@@ -25,5 +36,5 @@ class FixtureManager:
             return json.load(f)
 
     def validate_fixture(self, data: Any, schema: Any) -> bool:
-        # Implementation: Validate JSON against provided schema
-        return True
+        # Simple check for dictionary type as basic validation
+        return isinstance(data, dict) if schema == "dict" else True
