@@ -188,11 +188,7 @@ class _BasePromptCache(ABC):
     def _get_stale_entries(self) -> list[tuple[str, CacheEntry]]:
         """Get list of stale cache entries (thread-safe)."""
         with self._lock:
-            return [
-                (key, entry)
-                for key, entry in self._cache.items()
-                if entry.is_stale(self._ttl_seconds)
-            ]
+            return [(key, entry) for key, entry in self._cache.items() if entry.is_stale(self._ttl_seconds)]
 
     def dump(self, path: Union[str, Path]) -> None:
         """Dump cache contents to a JSON file for offline use.
@@ -500,9 +496,7 @@ class AsyncPromptCache(_BasePromptCache):
         )
         self._refresh_task: Optional[asyncio.Task[None]] = None
 
-    async def aset(
-        self, key: str, value: Any, refresh_func: Callable[[], Awaitable[Any]]
-    ) -> None:
+    async def aset(self, key: str, value: Any, refresh_func: Callable[[], Awaitable[Any]]) -> None:
         """Set a value in the cache.
 
         Args:
@@ -674,8 +668,7 @@ async def configure_global_async_prompt_cache(
 
 def _deprecated_cache_class_warning() -> None:
     warnings.warn(
-        "The 'Cache' class is deprecated and will be removed in a future version. "
-        "Use 'PromptCache' instead.",
+        "The 'Cache' class is deprecated and will be removed in a future version. Use 'PromptCache' instead.",
         DeprecationWarning,
         stacklevel=3,
     )

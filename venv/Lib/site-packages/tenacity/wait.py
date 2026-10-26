@@ -15,10 +15,13 @@
 # limitations under the License.
 
 import abc
+import math
 import random
 import typing
+import warnings
 
 from tenacity import _utils
+from tenacity._utils import override
 
 if typing.TYPE_CHECKING:
     from tenacity import RetryCallState
@@ -34,16 +37,25 @@ class wait_base(abc.ABC):
     def __add__(self, other: "wait_base") -> "wait_combine":
         return wait_combine(self, other)
 
-    def __radd__(self, other: "wait_base") -> typing.Union["wait_combine", "wait_base"]:
-        # make it possible to use multiple waits with the built-in sum function
-        if other == 0:  # type: ignore[comparison-overlap]
-            return self
-        return self.__add__(other)
+    # `other` is `int` rather than `Literal[0]` because typeshed's `sum()`
+    # protocol demands `__radd__(x: int)`; narrowing it would make every
+    # `sum()` over wait strategies need a `type: ignore`. A non-zero number is
+    # rejected at runtime instead, below.
+    def __radd__(self, other: "WaitBaseT | int") -> "wait_combine | wait_base":
+        if isinstance(other, int):
+            # `sum()` seeds its accumulator with the int 0; treat that as
+            # identity so summing a list of strategies works. Any other number
+            # is not a wait strategy, and saying so here raises TypeError at
+            # the `+` rather than building a combination that fails when called.
+            if other == 0:
+                return self
+            return NotImplemented
+        # A plain callable -- `WaitBaseT` admits those, and a function has no
+        # `__add__` of its own to handle `callable + strategy`.
+        return wait_combine(self, other)
 
 
-WaitBaseT = typing.Union[
-    wait_base, typing.Callable[["RetryCallState"], typing.Union[float, int]]
-]
+WaitBaseT = wait_base | typing.Callable[["RetryCallState"], float | int]
 
 
 class wait_fixed(wait_base):
@@ -52,6 +64,7 @@ class wait_fixed(wait_base):
     def __init__(self, wait: _utils.time_unit_type) -> None:
         self.wait_fixed = _utils.to_seconds(wait)
 
+    @override
     def __call__(self, retry_state: "RetryCallState") -> float:
         return self.wait_fixed
 
@@ -68,10 +81,11 @@ class wait_random(wait_base):
 
     def __init__(
         self, min: _utils.time_unit_type = 0, max: _utils.time_unit_type = 1
-    ) -> None:  # noqa
+    ) -> None:
         self.wait_random_min = _utils.to_seconds(min)
         self.wait_random_max = _utils.to_seconds(max)
 
+    @override
     def __call__(self, retry_state: "RetryCallState") -> float:
         return self.wait_random_min + (
             random.random() * (self.wait_random_max - self.wait_random_min)
@@ -81,11 +95,16 @@ class wait_random(wait_base):
 class wait_combine(wait_base):
     """Combine several waiting strategies."""
 
-    def __init__(self, *strategies: wait_base) -> None:
+    def __init__(self, *strategies: "WaitBaseT") -> None:
         self.wait_funcs = strategies
 
+    @override
     def __call__(self, retry_state: "RetryCallState") -> float:
-        return sum(x(retry_state=retry_state) for x in self.wait_funcs)
+        # Positional, like `BaseRetrying._run_wait`: a `WaitBaseT` callable is
+        # only guaranteed to take the state positionally, so passing it by
+        # keyword crashed on any callable whose parameter is not named
+        # `retry_state`.
+        return float(sum(x(retry_state) for x in self.wait_funcs))
 
 
 class wait_chain(wait_base):
@@ -105,8 +124,11 @@ class wait_chain(wait_base):
     """
 
     def __init__(self, *strategies: wait_base) -> None:
+        if not strategies:
+            raise ValueError("wait_chain() requires at least one strategy")
         self.strategies = strategies
 
+    @override
     def __call__(self, retry_state: "RetryCallState") -> float:
         wait_func_no = min(max(retry_state.attempt_number, 1), len(self.strategies))
         wait_func = self.strategies[wait_func_no - 1]
@@ -142,6 +164,7 @@ class wait_exception(wait_base):
     def __init__(self, predicate: typing.Callable[[BaseException], float]) -> None:
         self.predicate = predicate
 
+    @override
     def __call__(self, retry_state: "RetryCallState") -> float:
         if retry_state.outcome is None:
             raise RuntimeError("__call__() called before outcome was set")
@@ -163,12 +186,13 @@ class wait_incrementing(wait_base):
         self,
         start: _utils.time_unit_type = 0,
         increment: _utils.time_unit_type = 100,
-        max: _utils.time_unit_type = _utils.MAX_WAIT,  # noqa
+        max: _utils.time_unit_type = _utils.MAX_WAIT,
     ) -> None:
         self.start = _utils.to_seconds(start)
         self.increment = _utils.to_seconds(increment)
         self.max = _utils.to_seconds(max)
 
+    @override
     def __call__(self, retry_state: "RetryCallState") -> float:
         result = self.start + (self.increment * (retry_state.attempt_number - 1))
         return max(0, min(result, self.max))
@@ -189,19 +213,31 @@ class wait_exponential(wait_base):
 
     def __init__(
         self,
-        multiplier: typing.Union[int, float] = 1,
-        max: _utils.time_unit_type = _utils.MAX_WAIT,  # noqa
-        exp_base: typing.Union[int, float] = 2,
-        min: _utils.time_unit_type = 0,  # noqa
+        multiplier: float = 1,
+        max: _utils.time_unit_type = _utils.MAX_WAIT,
+        exp_base: float = 2,
+        min: _utils.time_unit_type = 0,
     ) -> None:
         self.multiplier = multiplier
         self.min = _utils.to_seconds(min)
         self.max = _utils.to_seconds(max)
         self.exp_base = exp_base
 
+    @override
     def __call__(self, retry_state: "RetryCallState") -> float:
+        exponent = retry_state.attempt_number - 1
+        if (
+            self.multiplier > 0
+            and self.max > 0
+            and self.exp_base > 1
+            and math.isfinite(self.max)
+            and exponent
+            > math.log(self.max, self.exp_base)
+            - math.log(self.multiplier, self.exp_base)
+        ):
+            return max(max(0, self.min), self.max)
         try:
-            exp = self.exp_base ** (retry_state.attempt_number - 1)
+            exp = self.exp_base**exponent
             result = self.multiplier * exp
         except OverflowError:
             return self.max
@@ -234,6 +270,7 @@ class wait_random_exponential(wait_exponential):
 
     """
 
+    @override
     def __call__(self, retry_state: "RetryCallState") -> float:
         high = super().__call__(retry_state=retry_state)
         return random.uniform(self.min, high)
@@ -242,32 +279,49 @@ class wait_random_exponential(wait_exponential):
 class wait_exponential_jitter(wait_base):
     """Wait strategy that applies exponential backoff and jitter.
 
-    It allows for a customized initial wait, maximum wait and jitter.
+    It allows for a customized multiplier, maximum wait, jitter and minimum.
 
     This implements the strategy described here:
     https://cloud.google.com/storage/docs/retry-strategy
 
-    The wait time is min(initial * 2**n + random.uniform(0, jitter), maximum)
+    The wait time is max(min, min(multiplier * 2**n + random.uniform(0, jitter), maximum))
     where n is the retry count.
     """
 
     def __init__(
         self,
         initial: float = 1,
-        max: float = _utils.MAX_WAIT,  # noqa
+        max: _utils.time_unit_type = _utils.MAX_WAIT,
         exp_base: float = 2,
-        jitter: float = 1,
+        jitter: _utils.time_unit_type = 1,
+        min: _utils.time_unit_type = 0,
+        multiplier: float = 1,
     ) -> None:
-        self.initial = initial
-        self.max = max
-        self.exp_base = exp_base
-        self.jitter = jitter
+        if initial != 1 and multiplier != 1:
+            raise ValueError(
+                "Cannot specify both 'initial' and 'multiplier' — use 'multiplier' only"
+            )
 
+        if initial != 1:
+            warnings.warn(
+                "The 'initial' parameter is deprecated, use 'multiplier' instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            multiplier = initial
+
+        self.multiplier = multiplier
+        self.max = _utils.to_seconds(max)
+        self.exp_base = exp_base
+        self.jitter = _utils.to_seconds(jitter)
+        self.min = _utils.to_seconds(min)
+
+    @override
     def __call__(self, retry_state: "RetryCallState") -> float:
         jitter = random.uniform(0, self.jitter)
         try:
             exp = self.exp_base ** (retry_state.attempt_number - 1)
-            result = self.initial * exp + jitter
+            result = self.multiplier * exp + jitter
         except OverflowError:
             result = self.max
-        return max(0, min(result, self.max))
+        return max(max(0, self.min), min(result, self.max))

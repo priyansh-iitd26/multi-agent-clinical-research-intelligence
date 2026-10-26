@@ -1,5 +1,3 @@
-# File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
-
 from __future__ import annotations
 
 from .memory_list_params import MemoryListParams as MemoryListParams
@@ -21,6 +19,9 @@ from .beta_managed_agents_memory_version import BetaManagedAgentsMemoryVersion a
 from .beta_managed_agents_memory_list_item import BetaManagedAgentsMemoryListItem as BetaManagedAgentsMemoryListItem
 from .beta_managed_agents_precondition_param import (
     BetaManagedAgentsPreconditionParam as BetaManagedAgentsPreconditionParam,
+)
+from .beta_managed_agents_service_account_actor import (
+    BetaManagedAgentsServiceAccountActor as BetaManagedAgentsServiceAccountActor,
 )
 from .beta_managed_agents_memory_version_operation import (
     BetaManagedAgentsMemoryVersionOperation as BetaManagedAgentsMemoryVersionOperation,

@@ -20,30 +20,38 @@ import sys
 import typing as t
 
 import tenacity
-from tenacity import AttemptManager
-from tenacity import BaseRetrying
-from tenacity import DoAttempt
-from tenacity import DoSleep
-from tenacity import RetryCallState
-from tenacity import RetryError
-from tenacity import after_nothing
-from tenacity import before_nothing
-from tenacity import _utils
+from tenacity import (
+    AttemptManager,
+    BaseRetrying,
+    DoAttempt,
+    DoSleep,
+    RetryCallState,
+    RetryError,
+    _RetryDecorated,
+    _utils,
+    after_nothing,
+    before_nothing,
+)
+from tenacity._utils import override
 
 # Import all built-in retry strategies for easier usage.
-from .retry import RetryBaseT
-from .retry import retry_all  # noqa
-from .retry import retry_any  # noqa
-from .retry import retry_if_exception  # noqa
-from .retry import retry_if_result  # noqa
-from ..retry import RetryBaseT as SyncRetryBaseT
+from .retry import (
+    RetryBaseT,
+    retry_all,
+    retry_any,
+    retry_if_exception,
+    retry_if_result,
+)
 
 if t.TYPE_CHECKING:
+    from tenacity.retry import RetryBaseT as SyncRetryBaseT
     from tenacity.stop import StopBaseT
     from tenacity.wait import WaitBaseT
 
 WrappedFnReturnT = t.TypeVar("WrappedFnReturnT")
 WrappedFn = t.TypeVar("WrappedFn", bound=t.Callable[..., t.Awaitable[t.Any]])
+P = t.ParamSpec("P")
+R = t.TypeVar("R")
 
 
 def _portable_async_sleep(seconds: float) -> t.Awaitable[None]:
@@ -52,11 +60,11 @@ def _portable_async_sleep(seconds: float) -> t.Awaitable[None]:
     # can skip further checks.
     if "trio" in sys.modules:
         # If trio is available, then sniffio is too
-        import trio
         import sniffio
+        import trio
 
         if sniffio.current_async_library() == "trio":
-            return trio.sleep(seconds)
+            return trio.sleep(seconds)  # noqa: ASYNC105
     # Otherwise, assume asyncio
     # Lazy import asyncio as it's expensive (responsible for 25-50% of total import overhead).
     import asyncio
@@ -68,25 +76,23 @@ class AsyncRetrying(BaseRetrying):
     def __init__(
         self,
         sleep: t.Callable[
-            [t.Union[int, float]], t.Union[None, t.Awaitable[None]]
+            [int | float], t.Awaitable[None] | None
         ] = _portable_async_sleep,
         stop: "StopBaseT" = tenacity.stop.stop_never,
         wait: "WaitBaseT" = tenacity.wait.wait_none(),
-        retry: "t.Union[SyncRetryBaseT, RetryBaseT]" = tenacity.retry_if_exception_type(),
+        retry: "SyncRetryBaseT | RetryBaseT" = tenacity.retry_if_exception_type(),
         before: t.Callable[
-            ["RetryCallState"], t.Union[None, t.Awaitable[None]]
+            ["RetryCallState"], t.Awaitable[None] | None
         ] = before_nothing,
-        after: t.Callable[
-            ["RetryCallState"], t.Union[None, t.Awaitable[None]]
-        ] = after_nothing,
-        before_sleep: t.Optional[
-            t.Callable[["RetryCallState"], t.Union[None, t.Awaitable[None]]]
-        ] = None,
+        after: t.Callable[["RetryCallState"], t.Awaitable[None] | None] = after_nothing,
+        before_sleep: t.Callable[["RetryCallState"], t.Awaitable[None] | None]
+        | None = None,
         reraise: bool = False,
-        retry_error_cls: t.Type["RetryError"] = RetryError,
-        retry_error_callback: t.Optional[
-            t.Callable[["RetryCallState"], t.Union[t.Any, t.Awaitable[t.Any]]]
-        ] = None,
+        retry_error_cls: type["RetryError"] = RetryError,
+        retry_error_callback: t.Callable[["RetryCallState"], t.Any | t.Awaitable[t.Any]]
+        | None = None,
+        name: str | None = None,
+        enabled: bool = True,
     ) -> None:
         super().__init__(
             sleep=sleep,  # type: ignore[arg-type]
@@ -99,15 +105,23 @@ class AsyncRetrying(BaseRetrying):
             reraise=reraise,
             retry_error_cls=retry_error_cls,
             retry_error_callback=retry_error_callback,
+            name=name,
+            enabled=enabled,
         )
 
+    @override
     async def __call__(  # type: ignore[override]
         self, fn: WrappedFn, *args: t.Any, **kwargs: t.Any
     ) -> WrappedFnReturnT:
+        is_async = _utils.is_coroutine_callable(fn)
+        if not self.enabled:
+            if is_async:
+                return await fn(*args, **kwargs)  # type: ignore[no-any-return]
+            return fn(*args, **kwargs)  # type: ignore[return-value]
+
         self.begin()
 
         retry_state = RetryCallState(retry_object=self, fn=fn, args=args, kwargs=kwargs)
-        is_async = _utils.is_coroutine_callable(fn)
         while True:
             do = await self.iter(retry_state=retry_state)
             if isinstance(do, DoAttempt):
@@ -116,7 +130,7 @@ class AsyncRetrying(BaseRetrying):
                         result = await fn(*args, **kwargs)
                     else:
                         result = fn(*args, **kwargs)
-                except BaseException:  # noqa: B902
+                except BaseException:
                     retry_state.set_exception(sys.exc_info())  # type: ignore[arg-type]
                 else:
                     retry_state.set_result(result)
@@ -126,59 +140,75 @@ class AsyncRetrying(BaseRetrying):
             else:
                 return do  # type: ignore[no-any-return]
 
+    @override
     def _add_action_func(self, fn: t.Callable[..., t.Any]) -> None:
         self.iter_state.actions.append(_utils.wrap_to_async_func(fn))
 
+    @override
     async def _run_retry(self, retry_state: "RetryCallState") -> None:  # type: ignore[override]
         self.iter_state.retry_run_result = await _utils.wrap_to_async_func(self.retry)(
             retry_state
         )
 
+    @override
     async def _run_wait(self, retry_state: "RetryCallState") -> None:  # type: ignore[override]
-        if self.wait:
-            sleep = await _utils.wrap_to_async_func(self.wait)(retry_state)
-        else:
-            sleep = 0.0
+        retry_state.upcoming_sleep = await _utils.wrap_to_async_func(self.wait)(
+            retry_state
+        )
 
-        retry_state.upcoming_sleep = sleep
-
+    @override
     async def _run_stop(self, retry_state: "RetryCallState") -> None:  # type: ignore[override]
         self.statistics["delay_since_first_attempt"] = retry_state.seconds_since_start
         self.iter_state.stop_run_result = await _utils.wrap_to_async_func(self.stop)(
             retry_state
         )
 
-    async def iter(
-        self, retry_state: "RetryCallState"
-    ) -> t.Union[DoAttempt, DoSleep, t.Any]:  # noqa: A003
+    @override
+    async def iter(self, retry_state: "RetryCallState") -> DoAttempt | DoSleep | t.Any:
         self._begin_iter(retry_state)
         result = None
         for action in self.iter_state.actions:
             result = await action(retry_state)
         return result
 
+    @override
     def __iter__(self) -> t.Generator[AttemptManager, None, None]:
         raise TypeError("AsyncRetrying object is not iterable")
 
     def __aiter__(self) -> "AsyncRetrying":
+        if not self.enabled:
+            self._retry_state = RetryCallState(self, fn=None, args=(), kwargs={})
+            self._disabled_iter_done = False
+            return self
+
         self.begin()
         self._retry_state = RetryCallState(self, fn=None, args=(), kwargs={})
         return self
 
     async def __anext__(self) -> AttemptManager:
+        if not self.enabled:
+            if self._disabled_iter_done:
+                outcome = self._retry_state.outcome
+                if outcome is not None and outcome.failed:
+                    raise outcome.exception()  # type: ignore[misc]
+                raise StopAsyncIteration
+            self._disabled_iter_done = True
+            return AttemptManager(retry_state=self._retry_state)
+
         while True:
             do = await self.iter(retry_state=self._retry_state)
             if do is None:
                 raise StopAsyncIteration
-            elif isinstance(do, DoAttempt):
+            if isinstance(do, DoAttempt):
                 return AttemptManager(retry_state=self._retry_state)
-            elif isinstance(do, DoSleep):
+            if isinstance(do, DoSleep):
                 self._retry_state.prepare_for_next_attempt()
                 await self.sleep(do)  # type: ignore[misc]
             else:
                 raise StopAsyncIteration
 
-    def wraps(self, fn: WrappedFn) -> WrappedFn:
+    @override
+    def wraps(self, fn: t.Callable[P, R]) -> _RetryDecorated[P, R]:
         wrapped = super().wraps(fn)
         # Ensure wrapper is recognized as a coroutine function.
 
@@ -186,25 +216,34 @@ class AsyncRetrying(BaseRetrying):
             fn, functools.WRAPPER_ASSIGNMENTS + ("__defaults__", "__kwdefaults__")
         )
         async def async_wrapped(*args: t.Any, **kwargs: t.Any) -> t.Any:
+            if not self.enabled:
+                return await fn(*args, **kwargs)  # type: ignore[misc]
             # Always create a copy to prevent overwriting the local contexts when
             # calling the same wrapped functions multiple times in the same stack
             copy = self.copy()
-            async_wrapped.statistics = copy.statistics  # type: ignore[attr-defined]
-            return await copy(fn, *args, **kwargs)
+            # Reuse the same statistics dict rather than rebinding the attribute
+            # so that the stats stay visible through additional decorators that
+            # copy attributes via functools.wraps (which copies the reference to
+            # this dict into the outer wrapper's __dict__). See issue #519.
+            stats = async_wrapped.statistics  # type: ignore[attr-defined]
+            stats.clear()
+            copy._local.statistics = stats  # noqa: SLF001
+            self._local.statistics = stats
+            return await copy(fn, *args, **kwargs)  # type: ignore[type-var]
 
         # Preserve attributes
         async_wrapped.retry = self  # type: ignore[attr-defined]
         async_wrapped.retry_with = wrapped.retry_with  # type: ignore[attr-defined]
         async_wrapped.statistics = {}  # type: ignore[attr-defined]
 
-        return async_wrapped  # type: ignore[return-value]
+        return t.cast("_RetryDecorated[P, R]", async_wrapped)
 
 
 __all__ = [
+    "AsyncRetrying",
+    "WrappedFn",
     "retry_all",
     "retry_any",
     "retry_if_exception",
     "retry_if_result",
-    "WrappedFn",
-    "AsyncRetrying",
 ]

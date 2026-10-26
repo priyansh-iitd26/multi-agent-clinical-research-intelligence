@@ -171,8 +171,7 @@ class _Matcher:
         """
         self._assert(
             min_value < self.value < max_value,
-            f"Expected {self.key} to be between {min_value} and {max_value},"
-            f" but got {self.value}",
+            f"Expected {self.key} to be between {min_value} and {max_value}, but got {self.value}",
             "to_be_between",
         )
 
@@ -319,9 +318,7 @@ class _Expect:
                 "comment": f"Using {encoder_func}, Metric: {evaluator.distance}",
             },
         )
-        return _Matcher(
-            self._client, "embedding_distance", score, _executor=self.executor
-        )
+        return _Matcher(self._client, "embedding_distance", score, _executor=self.executor)
 
     def edit_distance(
         self,
@@ -455,9 +452,7 @@ class _Expect:
         if not ls_utils.test_tracking_is_disabled():
             if not self._client:
                 self._client = rt.get_cached_client()
-            self.executor.submit(
-                self._client.create_feedback, run_id=run_id, key=key, **results
-            )
+            self.executor.submit(self._client.create_feedback, run_id=run_id, key=key, **results)
 
 
 expect = _Expect()

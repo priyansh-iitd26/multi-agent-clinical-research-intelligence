@@ -28,9 +28,7 @@ _LOCK_METADATA_FILE = "created_at"
 
 
 def _now_iso() -> str:
-    return (
-        datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z")
-    )
+    return datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def _force_remove(path: str) -> None:
@@ -59,9 +57,7 @@ def _lock_created_at(lock_dir: str) -> Optional[float]:
     lines = _lock_metadata_lines(lock_dir)
     if lines and lines[0].strip():
         try:
-            parsed = datetime.datetime.fromisoformat(
-                lines[0].strip().replace("Z", "+00:00")
-            )
+            parsed = datetime.datetime.fromisoformat(lines[0].strip().replace("Z", "+00:00"))
             return parsed.timestamp()
         except ValueError:
             pass

@@ -13,9 +13,7 @@ same thread (e.g. multiple ``ClaudeSDKClient`` instances driven by
 from contextvars import ContextVar
 from typing import Any, Optional
 
-_parent_run_tree: ContextVar[Optional[Any]] = ContextVar(
-    "langsmith_claude_agent_parent_run_tree", default=None
-)
+_parent_run_tree: ContextVar[Optional[Any]] = ContextVar("langsmith_claude_agent_parent_run_tree", default=None)
 
 
 def set_parent_run_tree(run_tree: Any) -> Any:

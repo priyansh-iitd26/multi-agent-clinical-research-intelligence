@@ -155,9 +155,7 @@ def _process_gemini_inputs(inputs: dict) -> dict:
 
             # If only text parts, use simple string format
             if content_parts and all(p.get("type") == "text" for p in content_parts):
-                message_content: Union[str, list[dict[str, Any]]] = "\n".join(
-                    text_parts
-                )
+                message_content: Union[str, list[dict[str, Any]]] = "\n".join(text_parts)
             else:
                 message_content = content_parts if content_parts else ""
 
@@ -173,9 +171,7 @@ def _process_gemini_inputs(inputs: dict) -> dict:
     return inputs
 
 
-def _infer_invocation_params(
-    prepopulated_invocation_params: dict, kwargs: dict
-) -> dict:
+def _infer_invocation_params(prepopulated_invocation_params: dict, kwargs: dict) -> dict:
     """Extract invocation parameters for tracing."""
     stripped = _strip_none(kwargs)
     config = stripped.get("config", {})
@@ -205,24 +201,15 @@ def _create_usage_metadata(gemini_usage_metadata: dict) -> UsageMetadata:
     """Convert Gemini usage metadata to LangSmith format."""
     prompt_token_count = gemini_usage_metadata.get("prompt_token_count") or 0
     candidates_token_count = gemini_usage_metadata.get("candidates_token_count") or 0
-    cached_content_token_count = (
-        gemini_usage_metadata.get("cached_content_token_count") or 0
-    )
+    cached_content_token_count = gemini_usage_metadata.get("cached_content_token_count") or 0
     thoughts_token_count = gemini_usage_metadata.get("thoughts_token_count") or 0
-    total_token_count = (
-        gemini_usage_metadata.get("total_token_count")
-        or prompt_token_count + candidates_token_count
-    )
+    total_token_count = gemini_usage_metadata.get("total_token_count") or prompt_token_count + candidates_token_count
 
     input_token_details: dict = {}
     if cached_content_token_count:
         input_token_details["cache_read"] = min(cached_content_token_count, 200000)
-        input_token_details["cache_read_over_200k"] = max(
-            0, cached_content_token_count - 200000
-        )
-        input_token_details["over_200k"] = max(
-            0, prompt_token_count - cached_content_token_count - 200000
-        )
+        input_token_details["cache_read_over_200k"] = max(0, cached_content_token_count - 200000)
+        input_token_details["over_200k"] = max(0, prompt_token_count - cached_content_token_count - 200000)
 
     output_token_details: dict = {}
     if thoughts_token_count:
@@ -235,12 +222,8 @@ def _create_usage_metadata(gemini_usage_metadata: dict) -> UsageMetadata:
         input_tokens=prompt_token_count,
         output_tokens=candidates_token_count,
         total_tokens=total_token_count,
-        input_token_details=InputTokenDetails(
-            **{k: v for k, v in input_token_details.items() if v is not None}
-        ),
-        output_token_details=OutputTokenDetails(
-            **{k: v for k, v in output_token_details.items() if v is not None}
-        ),
+        input_token_details=InputTokenDetails(**{k: v for k, v in input_token_details.items() if v is not None}),
+        output_token_details=OutputTokenDetails(**{k: v for k, v in output_token_details.items() if v is not None}),
     )
 
 
@@ -291,9 +274,7 @@ def _process_generate_content_response(response: Any) -> dict:
                                 }
                             )
                         elif "function_call" in part or "functionCall" in part:
-                            fc = _to_dict(
-                                part.get("function_call") or part.get("functionCall")
-                            )
+                            fc = _to_dict(part.get("function_call") or part.get("functionCall"))
                             if isinstance(fc, dict):
                                 content_parts.append(
                                     {
@@ -326,17 +307,13 @@ def _process_generate_content_response(response: Any) -> dict:
                         "index": i,
                         "function": {
                             "name": tc["function_call"]["name"],
-                            "arguments": _dumps(
-                                tc["function_call"]["arguments"]
-                            ).decode(),
+                            "arguments": _dumps(tc["function_call"]["arguments"]).decode(),
                         },
                     }
                     for i, tc in enumerate(tool_calls)
                 ],
             }
-        elif len(content_parts) > 1 or (
-            content_parts and content_parts[0]["type"] != "text"
-        ):
+        elif len(content_parts) > 1 or (content_parts and content_parts[0]["type"] != "text"):
             # Use structured format for mixed non-tool content
             result = {
                 "content": content_parts,
@@ -353,9 +330,7 @@ def _process_generate_content_response(response: Any) -> dict:
 
         # Extract and convert usage metadata
         usage_metadata = rdict.get("usage_metadata")
-        usage_dict: UsageMetadata = UsageMetadata(
-            input_tokens=0, output_tokens=0, total_tokens=0
-        )
+        usage_dict: UsageMetadata = UsageMetadata(input_tokens=0, output_tokens=0, total_tokens=0)
         if usage_metadata:
             usage_dict = _create_usage_metadata(usage_metadata)
 
@@ -396,9 +371,7 @@ def _reduce_generate_content_chunks(all_chunks: list) -> dict:
     if not all_chunks:
         return {
             "content": "",
-            "usage_metadata": UsageMetadata(
-                input_tokens=0, output_tokens=0, total_tokens=0
-            ),
+            "usage_metadata": UsageMetadata(input_tokens=0, output_tokens=0, total_tokens=0),
         }
 
     # Accumulate text from all chunks
@@ -414,9 +387,7 @@ def _reduce_generate_content_chunks(all_chunks: list) -> dict:
             logger.debug(f"Error processing chunk: {e}")
 
     # Extract usage metadata from the last chunk
-    usage_metadata: UsageMetadata = UsageMetadata(
-        input_tokens=0, output_tokens=0, total_tokens=0
-    )
+    usage_metadata: UsageMetadata = UsageMetadata(input_tokens=0, output_tokens=0, total_tokens=0)
     if last_chunk:
         try:
             if hasattr(last_chunk, "usage_metadata") and last_chunk.usage_metadata:
@@ -426,21 +397,13 @@ def _reduce_generate_content_chunks(all_chunks: list) -> dict:
                     usage_dict = last_chunk.usage_metadata.model_dump()
                 else:
                     usage_dict = {
-                        "prompt_token_count": getattr(
-                            last_chunk.usage_metadata, "prompt_token_count", 0
-                        ),
-                        "candidates_token_count": getattr(
-                            last_chunk.usage_metadata, "candidates_token_count", 0
-                        ),
+                        "prompt_token_count": getattr(last_chunk.usage_metadata, "prompt_token_count", 0),
+                        "candidates_token_count": getattr(last_chunk.usage_metadata, "candidates_token_count", 0),
                         "cached_content_token_count": getattr(
                             last_chunk.usage_metadata, "cached_content_token_count", 0
                         ),
-                        "thoughts_token_count": getattr(
-                            last_chunk.usage_metadata, "thoughts_token_count", 0
-                        ),
-                        "total_token_count": getattr(
-                            last_chunk.usage_metadata, "total_token_count", 0
-                        ),
+                        "thoughts_token_count": getattr(last_chunk.usage_metadata, "thoughts_token_count", 0),
+                        "total_token_count": getattr(last_chunk.usage_metadata, "total_token_count", 0),
                     }
                 # Add usage_metadata to both run.extra AND outputs
                 usage_metadata = _create_usage_metadata(usage_dict)
@@ -475,12 +438,8 @@ def _get_wrapper(
             run_type="llm",
             reduce_fn=_reduce_generate_content_chunks if is_streaming else None,
             process_inputs=_process_gemini_inputs,
-            process_outputs=(
-                _process_generate_content_response if not is_streaming else None
-            ),
-            _invocation_params_fn=functools.partial(
-                _infer_invocation_params, prepopulated_invocation_params
-            ),
+            process_outputs=(_process_generate_content_response if not is_streaming else None),
+            _invocation_params_fn=functools.partial(_infer_invocation_params, prepopulated_invocation_params),
             **textra,
         )
 
@@ -496,12 +455,8 @@ def _get_wrapper(
             run_type="llm",
             reduce_fn=_reduce_generate_content_chunks if is_streaming else None,
             process_inputs=_process_gemini_inputs,
-            process_outputs=(
-                _process_generate_content_response if not is_streaming else None
-            ),
-            _invocation_params_fn=functools.partial(
-                _infer_invocation_params, prepopulated_invocation_params
-            ),
+            process_outputs=(_process_generate_content_response if not is_streaming else None),
+            _invocation_params_fn=functools.partial(_infer_invocation_params, prepopulated_invocation_params),
             **textra,
         )
 
@@ -635,8 +590,7 @@ def wrap_gemini(
         and hasattr(client.models.generate_content, "__wrapped__")
     ):
         raise ValueError(
-            "This Google Gen AI client has already been wrapped. "
-            "Wrapping a client multiple times is not supported."
+            "This Google Gen AI client has already been wrapped. Wrapping a client multiple times is not supported."
         )
 
     # Wrap synchronous methods
@@ -659,11 +613,7 @@ def wrap_gemini(
         )
 
     # Wrap async methods (aio namespace)
-    if (
-        hasattr(client, "aio")
-        and hasattr(client.aio, "models")
-        and hasattr(client.aio.models, "generate_content")
-    ):
+    if hasattr(client, "aio") and hasattr(client.aio, "models") and hasattr(client.aio.models, "generate_content"):
         client.aio.models.generate_content = _get_wrapper(  # type: ignore[method-assign]
             client.aio.models.generate_content,
             chat_name,

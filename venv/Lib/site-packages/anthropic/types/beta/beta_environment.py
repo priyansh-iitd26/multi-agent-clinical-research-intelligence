@@ -1,16 +1,13 @@
-# File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
-
 from typing import Dict, Union, Optional
 from typing_extensions import Literal, Annotated, TypeAlias
 
-from ..._utils import PropertyInfo
-from ..._models import BaseModel
+from ..._models import BaseModel, UnionDiscriminator
 from .beta_cloud_config import BetaCloudConfig
 from .beta_self_hosted_config import BetaSelfHostedConfig
 
 __all__ = ["BetaEnvironment", "Config"]
 
-Config: TypeAlias = Annotated[Union[BetaCloudConfig, BetaSelfHostedConfig], PropertyInfo(discriminator="type")]
+Config: TypeAlias = Annotated[Union[BetaCloudConfig, BetaSelfHostedConfig], UnionDiscriminator("type")]
 
 
 class BetaEnvironment(BaseModel):
@@ -28,8 +25,8 @@ class BetaEnvironment(BaseModel):
     created_at: str
     """RFC 3339 timestamp when environment was created"""
 
-    description: str
-    """User-provided description for the environment"""
+    description: Optional[str] = None
+    """User-provided description for the environment; null when unset"""
 
     metadata: Dict[str, str]
     """User-provided metadata key-value pairs"""

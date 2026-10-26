@@ -208,14 +208,10 @@ class YamuxSession:
         self._closed = False
         self._shutdown_event = threading.Event()
 
-        self._reader_thread = threading.Thread(
-            target=self._read_loop, daemon=True, name="yamux-reader"
-        )
+        self._reader_thread = threading.Thread(target=self._read_loop, daemon=True, name="yamux-reader")
         self._reader_thread.start()
 
-        self._keepalive_thread = threading.Thread(
-            target=self._keepalive_loop, daemon=True, name="yamux-keepalive"
-        )
+        self._keepalive_thread = threading.Thread(target=self._keepalive_loop, daemon=True, name="yamux-keepalive")
         self._keepalive_thread.start()
 
     @property
@@ -261,9 +257,7 @@ class YamuxSession:
 
     # -- Frame I/O ----------------------------------------------------------
 
-    def _send_frame(
-        self, msg_type: int, flags: int, stream_id: int, length: int
-    ) -> None:
+    def _send_frame(self, msg_type: int, flags: int, stream_id: int, length: int) -> None:
         hdr = struct.pack(_HEADER_FMT, _VERSION, msg_type, flags, stream_id, length)
         with self._write_lock:
             self._conn.write(hdr)
@@ -285,9 +279,7 @@ class YamuxSession:
                 if len(hdr_bytes) < _HEADER_SIZE:
                     break
 
-                _ver, msg_type, flags, stream_id, length = struct.unpack(
-                    _HEADER_FMT, hdr_bytes
-                )
+                _ver, msg_type, flags, stream_id, length = struct.unpack(_HEADER_FMT, hdr_bytes)
 
                 if msg_type == _TYPE_DATA:
                     self._handle_data(flags, stream_id, length)

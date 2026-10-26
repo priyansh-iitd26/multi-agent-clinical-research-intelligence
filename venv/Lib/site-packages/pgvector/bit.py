@@ -13,7 +13,7 @@ class Bit:
 
     def __init__(
         self,
-        value: bytes | str | list[bool] | np.ndarray[tuple[int, ...], np.dtype[np.bool | np.uint8]],
+        value: bytes | str | list[bool] | np.ndarray[tuple[int, ...], np.dtype[np.bool_ | np.uint8]],
         /
     ) -> None:
         if isinstance(value, bytes):
@@ -26,20 +26,19 @@ class Bit:
                     value = ''.join([bits[v] for v in value])
                 except (KeyError, TypeError):
                     raise ValueError('expected list[bool]')
+            elif not set(value).issubset({'0', '1'}):
+                raise ValueError('expected bit string')
 
             length = len(value)
             if length % 8 != 0:
                 value += '0' * (8 - (length % 8))
 
             self._length = length
-            try:
-                self._data = int(value, 2).to_bytes(len(value) // 8, byteorder='big')
-            except ValueError:
-                raise ValueError('expected bit string')
+            self._data = int(value, 2).to_bytes(len(value) // 8, byteorder='big')
         elif is_ndarray(value):
             import numpy as np
 
-            if value.dtype != np.bool:
+            if value.dtype != np.bool_:
                 # skip error for result of np.unpackbits
                 if value.dtype != np.uint8 or np.any(value > 1):
                     raise ValueError('expected elements to be boolean')
@@ -65,7 +64,7 @@ class Bit:
         # TODO improve
         return [v != '0' for v in self.to_text()]
 
-    def to_numpy(self) -> np.ndarray[tuple[int, ...], np.dtype[np.bool]]:
+    def to_numpy(self) -> np.ndarray[tuple[int, ...], np.dtype[np.bool_]]:
         import numpy as np
 
         return np.unpackbits(np.frombuffer(self._data, dtype=np.uint8), count=self._length).astype(bool)

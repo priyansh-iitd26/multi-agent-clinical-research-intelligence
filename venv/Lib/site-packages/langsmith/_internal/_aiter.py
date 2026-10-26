@@ -42,9 +42,7 @@ _no_default = object()
 
 # https://github.com/python/cpython/blob/main/Lib/test/test_asyncgen.py#L54
 # before 3.10, the builtin anext() was not available
-def py_anext(
-    iterator: AsyncIterator[T], default: Union[T, Any] = _no_default
-) -> Awaitable[Union[T, None, Any]]:
+def py_anext(iterator: AsyncIterator[T], default: Union[T, Any] = _no_default) -> Awaitable[Union[T, None, Any]]:
     """Pure-Python implementation of anext() for testing purposes.
 
     Closely matches the builtin anext() C implementation.
@@ -53,9 +51,7 @@ def py_anext(
     or throw() on the returned generator.
     """
     try:
-        __anext__ = cast(
-            Callable[[AsyncIterator[T]], Awaitable[T]], type(iterator).__anext__
-        )
+        __anext__ = cast(Callable[[AsyncIterator[T]], Awaitable[T]], type(iterator).__anext__)
     except AttributeError:
         raise TypeError(f"{iterator!r} is not an async iterator")
 
@@ -193,9 +189,7 @@ class Tee(Generic[T]):
     @overload
     def __getitem__(self, item: slice) -> tuple[AsyncIterator[T], ...]: ...
 
-    def __getitem__(
-        self, item: Union[int, slice]
-    ) -> Union[AsyncIterator[T], tuple[AsyncIterator[T], ...]]:
+    def __getitem__(self, item: Union[int, slice]) -> Union[AsyncIterator[T], tuple[AsyncIterator[T], ...]]:
         return self._children[item]
 
     def __iter__(self) -> Iterator[AsyncIterator[T]]:
@@ -222,9 +216,7 @@ async def async_zip(*async_iterables):
     iterators = [iterable.__aiter__() for iterable in async_iterables]
     while True:
         try:
-            items = await asyncio.gather(
-                *(py_anext(iterator) for iterator in iterators)
-            )
+            items = await asyncio.gather(*(py_anext(iterator) for iterator in iterators))
             yield tuple(items)
         except StopAsyncIteration:
             break
@@ -281,9 +273,7 @@ def aiter_with_concurrency(
                 yield await item
 
         return consume()
-    semaphore = cast(
-        asyncio.Semaphore, asyncio.Semaphore(n) if n is not None else NoLock()
-    )
+    semaphore = cast(asyncio.Semaphore, asyncio.Semaphore(n) if n is not None else NoLock())
 
     async def process_item(ix: int, item):
         async with semaphore:
@@ -314,9 +304,7 @@ def aiter_with_concurrency(
                 except asyncio.TimeoutError:
                     pass
             if n is not None and len(tasks) >= n:
-                done, _ = await asyncio.wait(
-                    tasks.values(), return_when=asyncio.FIRST_COMPLETED
-                )
+                done, _ = await asyncio.wait(tasks.values(), return_when=asyncio.FIRST_COMPLETED)
                 for task in done:
                     task_idx, res = task.result()
                     yield res
@@ -357,9 +345,7 @@ async def aio_to_thread(
     """
     overrides = get_runtime_overrides()
     if overrides.aio_to_thread is not None:
-        return await overrides.aio_to_thread(
-            _default_aio_to_thread, ctx, func, *args, **kwargs
-        )
+        return await overrides.aio_to_thread(_default_aio_to_thread, ctx, func, *args, **kwargs)
     return await _default_aio_to_thread(ctx, func, *args, **kwargs)
 
 

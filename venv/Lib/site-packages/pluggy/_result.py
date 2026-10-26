@@ -4,16 +4,16 @@ Hook wrapper "result" utilities.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from types import TracebackType
-from typing import Callable
 from typing import cast
 from typing import final
 from typing import Generic
-from typing import Optional
+from typing import TypeAlias
 from typing import TypeVar
 
 
-_ExcInfo = tuple[type[BaseException], BaseException, Optional[TracebackType]]
+_ExcInfo: TypeAlias = tuple[type[BaseException], BaseException, TracebackType | None]
 ResultType = TypeVar("ResultType")
 
 
@@ -26,7 +26,7 @@ class Result(Generic[ResultType]):
     """An object used to inspect and set the result in a :ref:`hook wrapper
     <hookwrappers>`."""
 
-    __slots__ = ("_result", "_exception", "_traceback")
+    __slots__ = ("_exception", "_result", "_traceback")
 
     def __init__(
         self,

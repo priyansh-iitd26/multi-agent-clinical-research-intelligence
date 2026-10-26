@@ -87,8 +87,8 @@ from langgraph._internal._runnable import RunnableCallable
 from langgraph.errors import GraphBubbleUp
 from langgraph.graph.message import REMOVE_ALL_MESSAGES
 from langgraph.pregel._tools import _tool_call_writer
-from langgraph.runtime import ExecutionInfo, ServerInfo  # noqa: TC002
-from langgraph.store.base import BaseStore  # noqa: TC002
+from langgraph.runtime import ExecutionInfo, ServerInfo
+from langgraph.store.base import BaseStore
 from langgraph.types import Command, Send, StreamWriter
 from pydantic import BaseModel, ValidationError
 from typing_extensions import TypeVar, Unpack
@@ -98,6 +98,14 @@ if TYPE_CHECKING:
 
     from langgraph.runtime import Runtime
     from pydantic_core import ErrorDetails
+
+try:
+    from langgraph.errors import is_invalid_resume
+except ImportError:  # `langgraph` before `is_invalid_resume` never marks resume errors
+
+    def is_invalid_resume(error: BaseException) -> bool:
+        return False
+
 
 # right now we use a dict as the default, can change this to AgentState, but depends
 # on if this lives in LangChain or LangGraph... ideally would have some typed
@@ -332,7 +340,7 @@ def msg_content_output(output: Any) -> str | list[dict]:
     # any existing ToolNode usage.
     try:
         return json.dumps(output, ensure_ascii=False)
-    except Exception:  # noqa: BLE001
+    except Exception:
         return str(output)
 
 
@@ -736,7 +744,7 @@ class ToolNode(RunnableCallable):
 
         tool_node = ToolNode([my_tool], handle_tool_errors=handle_errors)
         ```
-    """  # noqa: E501
+    """
 
     name: str = "tools"
 
@@ -957,6 +965,11 @@ class ToolNode(RunnableCallable):
             try:
                 response = tool.invoke(call_args, config)
             except ValidationError as exc:
+                if is_invalid_resume(exc):
+                    # An `interrupt()` in this tool, or in a graph it ran, got a resume
+                    # value that doesn't match its `response_schema`. That's not a bad
+                    # tool argument: fail the run so the interrupt can be answered again.
+                    raise
                 # Filter out errors for injected arguments
                 injected = self._injected_args.get(call["name"])
                 filtered_errors = _filter_validation_errors(exc, injected)
@@ -982,6 +995,10 @@ class ToolNode(RunnableCallable):
         except GraphBubbleUp:
             raise
         except Exception as e:
+            # The model can't fix a resume value that doesn't match an interrupt's
+            # `response_schema`, so no `handle_tool_errors` setting handles it.
+            if is_invalid_resume(e):
+                raise
             # Determine which exception types are handled
             handled_types: tuple[type[Exception], ...]
             if isinstance(self._handle_tool_errors, type) and issubclass(
@@ -1053,9 +1070,13 @@ class ToolNode(RunnableCallable):
         # Call wrapper with request and execute callable
         try:
             return self._wrap_tool_call(tool_request, execute)
+        except GraphBubbleUp:
+            # Interrupts always propagate, as they do without a wrapper.
+            raise
         except Exception as e:
-            # Wrapper threw an exception
-            if not self._handle_tool_errors:
+            # Wrapper threw an exception. The model can't fix a resume value that
+            # doesn't match an interrupt's `response_schema`, so it's never handled.
+            if not self._handle_tool_errors or is_invalid_resume(e):
                 raise
             # Convert to error message
             content = _handle_tool_error(e, flag=self._handle_tool_errors)
@@ -1104,6 +1125,11 @@ class ToolNode(RunnableCallable):
             try:
                 response = await tool.ainvoke(call_args, config)
             except ValidationError as exc:
+                if is_invalid_resume(exc):
+                    # An `interrupt()` in this tool, or in a graph it ran, got a resume
+                    # value that doesn't match its `response_schema`. That's not a bad
+                    # tool argument: fail the run so the interrupt can be answered again.
+                    raise
                 # Filter out errors for injected arguments
                 injected = self._injected_args.get(call["name"])
                 filtered_errors = _filter_validation_errors(exc, injected)
@@ -1129,6 +1155,10 @@ class ToolNode(RunnableCallable):
         except GraphBubbleUp:
             raise
         except Exception as e:
+            # The model can't fix a resume value that doesn't match an interrupt's
+            # `response_schema`, so no `handle_tool_errors` setting handles it.
+            if is_invalid_resume(e):
+                raise
             # Determine which exception types are handled
             handled_types: tuple[type[Exception], ...]
             if isinstance(self._handle_tool_errors, type) and issubclass(
@@ -1208,9 +1238,13 @@ class ToolNode(RunnableCallable):
             # None check was performed above already
             self._wrap_tool_call = cast("ToolCallWrapper", self._wrap_tool_call)
             return self._wrap_tool_call(tool_request, _sync_execute)
+        except GraphBubbleUp:
+            # Interrupts always propagate, as they do without a wrapper.
+            raise
         except Exception as e:
-            # Wrapper threw an exception
-            if not self._handle_tool_errors:
+            # Wrapper threw an exception. The model can't fix a resume value that
+            # doesn't match an interrupt's `response_schema`, so it's never handled.
+            if not self._handle_tool_errors or is_invalid_resume(e):
                 raise
             # Convert to error message
             content = _handle_tool_error(e, flag=self._handle_tool_errors)
@@ -1237,7 +1271,7 @@ class ToolNode(RunnableCallable):
             isinstance(input, dict) and input.get("__type") == "tool_call_with_context"
         ):
             # Handle ToolCallWithContext from Send API
-            # mypy will not be able to type narrow correctly since the signature
+            # Type checkers cannot narrow correctly since the signature
             # for input contains dict[str, Any]. We'd need to narrow dict[str, Any]
             # before we can apply correct typing.
             input_with_ctx = cast("ToolCallWithContext", input)

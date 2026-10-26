@@ -193,16 +193,12 @@ class LangSmithSpanExporter(SpanExporter):
                     )
                 else:
                     # The final model response is the only true output
-                    msg = self._event_to_message(
-                        name, attrs, tool_id_to_name=tool_id_to_name
-                    )
+                    msg = self._event_to_message(name, attrs, tool_id_to_name=tool_id_to_name)
                     if tool_call_id:
                         msg["tool_call_id"] = tool_call_id
                     output_messages.append(msg)
             elif name in self._MESSAGE_EVENTS:
-                msg = self._event_to_message(
-                    name, attrs, tool_id_to_name=tool_id_to_name
-                )
+                msg = self._event_to_message(name, attrs, tool_id_to_name=tool_id_to_name)
                 if tool_call_id:
                     msg["tool_call_id"] = tool_call_id
                 input_messages.append(msg)
@@ -240,9 +236,7 @@ class LangSmithSpanExporter(SpanExporter):
             new_attrs["langsmith.metadata.ls_provider"] = "amazon_bedrock"
             new_attrs["langsmith.metadata.ls_model_type"] = "chat"
 
-        return rebuild_readable_span(
-            span, attributes=new_attrs, events=remaining_events
-        )
+        return rebuild_readable_span(span, attributes=new_attrs, events=remaining_events)
 
     def _event_to_message(
         self,
@@ -296,11 +290,7 @@ class LangSmithSpanExporter(SpanExporter):
         if isinstance(content, list):
             converted = []
             for block in content:
-                if (
-                    tool_id_to_name is not None
-                    and isinstance(block, dict)
-                    and "toolUse" in block
-                ):
+                if tool_id_to_name is not None and isinstance(block, dict) and "toolUse" in block:
                     tu = block["toolUse"]
                     tid, tname = tu.get("toolUseId", ""), tu.get("name", "")
                     if tid and tname:
@@ -499,9 +489,7 @@ class LangSmithSpanExporter(SpanExporter):
                 # Recursively convert nested content blocks
                 nested = tr["content"]
                 if isinstance(nested, list):
-                    nested = [
-                        LangSmithSpanExporter._convert_content_block(b) for b in nested
-                    ]
+                    nested = [LangSmithSpanExporter._convert_content_block(b) for b in nested]
                 converted["content"] = nested
             return converted
 
@@ -544,6 +532,4 @@ def setup_langsmith_telemetry(*, console: bool = False) -> None:
 
     if console:
         console_exporter = LangSmithSpanExporter(delegate=ConsoleSpanExporter())
-        telemetry.tracer_provider.add_span_processor(
-            SimpleSpanProcessor(console_exporter)
-        )
+        telemetry.tracer_provider.add_span_processor(SimpleSpanProcessor(console_exporter))

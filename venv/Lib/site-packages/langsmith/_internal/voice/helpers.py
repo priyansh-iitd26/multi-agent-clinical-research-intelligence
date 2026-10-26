@@ -32,9 +32,7 @@ def observe_safely(observe: Callable[[Any], None], event: Any) -> None:
     try:
         observe(event)
     except Exception:
-        logger.warning(
-            "voice tracing: failed to observe an event; skipping it", exc_info=True
-        )
+        logger.warning("voice tracing: failed to observe an event; skipping it", exc_info=True)
 
 
 def scrub(obj: Any) -> Any:

@@ -16,9 +16,7 @@ import textwrap
 from typing import Callable
 
 # Python 3.14+ removes ast.Str in favor of ast.Constant
-_AST_STR_TYPES: tuple = (
-    (ast.Str, ast.Constant) if hasattr(ast, "Str") else (ast.Constant,)
-)
+_AST_STR_TYPES: tuple = (ast.Str, ast.Constant) if hasattr(ast, "Str") else (ast.Constant,)
 
 
 def _get_str_value(node: ast.expr) -> str:
@@ -39,33 +37,21 @@ def _extract_code_evaluator_feedback_keys(func: Callable) -> list[str]:
                     if key_str == "key" and isinstance(value, _AST_STR_TYPES):
                         key_value = _get_str_value(value)
             return [key_value] if key_value else keys
-        elif (
-            isinstance(node, ast.Call)
-            and isinstance(node.func, ast.Name)
-            and node.func.id == "dict"
-        ):
+        elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "dict":
             for keyword in node.keywords:
                 if keyword.arg == "key" and isinstance(keyword.value, _AST_STR_TYPES):
                     return [_get_str_value(keyword.value)]
         return []
 
     def extract_evaluation_result_key(node):
-        if (
-            isinstance(node, ast.Call)
-            and isinstance(node.func, ast.Name)
-            and node.func.id == "EvaluationResult"
-        ):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "EvaluationResult":
             for keyword in node.keywords:
                 if keyword.arg == "key" and isinstance(keyword.value, _AST_STR_TYPES):
                     return [_get_str_value(keyword.value)]
         return []
 
     def extract_evaluation_results_keys(node, variables):
-        if (
-            isinstance(node, ast.Call)
-            and isinstance(node.func, ast.Name)
-            and node.func.id == "EvaluationResults"
-        ):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "EvaluationResults":
             for keyword in node.keywords:
                 if keyword.arg == "results":
                     if isinstance(keyword.value, ast.Name):
@@ -83,10 +69,7 @@ def _extract_code_evaluator_feedback_keys(func: Callable) -> list[str]:
                         for elt in value.elts:
                             if isinstance(elt, ast.Dict):
                                 for elt_key, elt_value in zip(elt.keys, elt.values):
-                                    if (
-                                        isinstance(elt_key, _AST_STR_TYPES)
-                                        and _get_str_value(elt_key) == "key"
-                                    ):
+                                    if isinstance(elt_key, _AST_STR_TYPES) and _get_str_value(elt_key) == "key":
                                         if isinstance(elt_value, _AST_STR_TYPES):
                                             keys.append(_get_str_value(elt_value))
                             elif (
@@ -95,9 +78,7 @@ def _extract_code_evaluator_feedback_keys(func: Callable) -> list[str]:
                                 and elt.func.id in ("EvaluationResult", "dict")
                             ):
                                 for keyword in elt.keywords:
-                                    if keyword.arg == "key" and isinstance(
-                                        keyword.value, _AST_STR_TYPES
-                                    ):
+                                    if keyword.arg == "key" and isinstance(keyword.value, _AST_STR_TYPES):
                                         keys.append(_get_str_value(keyword.value))
 
                         return keys
@@ -125,9 +106,7 @@ def _extract_code_evaluator_feedback_keys(func: Callable) -> list[str]:
             elif isinstance(node, ast.Return) and node.value is not None:
                 dict_keys = extract_dict_keys(node.value)
                 eval_result_key = extract_evaluation_result_key(node.value)
-                eval_results_keys = extract_evaluation_results_keys(
-                    node.value, variables
-                )
+                eval_results_keys = extract_evaluation_results_keys(node.value, variables)
 
                 keys.extend(dict_keys)
                 keys.extend(eval_result_key)

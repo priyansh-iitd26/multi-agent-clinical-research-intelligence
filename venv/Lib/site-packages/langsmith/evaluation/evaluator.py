@@ -103,10 +103,7 @@ class EvaluationResult(BaseModel):
     def check_value_non_numeric(self) -> EvaluationResult:
         """Warn when numeric values are passed via the `value` field."""
         if self.score is None and isinstance(self.value, (int, float)):
-            logger.warning(
-                "Numeric values should be provided in the 'score' field, not 'value'."
-                f" Got: {self.value}"
-            )
+            logger.warning(f"Numeric values should be provided in the 'score' field, not 'value'. Got: {self.value}")
         return self
 
 
@@ -229,18 +226,14 @@ class DynamicRunEvaluator(RunEvaluator):
         def process_inputs(inputs: dict) -> dict:
             if prepare_inputs is None:
                 return inputs
-            (_, _, traced_inputs) = prepare_inputs(
-                inputs.get("run"), inputs.get("example")
-            )
+            (_, _, traced_inputs) = prepare_inputs(inputs.get("run"), inputs.get("example"))
             return traced_inputs
 
         wraps(func)(self)
         from langsmith import run_helpers  # type: ignore
 
         if afunc is not None:
-            self.afunc = run_helpers.ensure_traceable(
-                afunc, process_inputs=process_inputs
-            )
+            self.afunc = run_helpers.ensure_traceable(afunc, process_inputs=process_inputs)
             self._name = getattr(afunc, "__name__", "DynamicRunEvaluator")
         if inspect.iscoroutinefunction(func):
             if afunc is not None:
@@ -249,9 +242,7 @@ class DynamicRunEvaluator(RunEvaluator):
                     "also provided. If providing both, func should be a regular "
                     "function to avoid ambiguity."
                 )
-            self.afunc = run_helpers.ensure_traceable(
-                func, process_inputs=process_inputs
-            )
+            self.afunc = run_helpers.ensure_traceable(func, process_inputs=process_inputs)
             self._name = getattr(func, "__name__", "DynamicRunEvaluator")
         else:
             self.func = run_helpers.ensure_traceable(
@@ -286,8 +277,7 @@ class DynamicRunEvaluator(RunEvaluator):
             return EvaluationResult(**{"source_run_id": source_run_id, **result})
         except ValidationError as e:
             raise ValueError(
-                "Expected an EvaluationResult object, or dict with a metric"
-                f" 'key' and optional 'score'; got {result}"
+                f"Expected an EvaluationResult object, or dict with a metric 'key' and optional 'score'; got {result}"
             ) from e
 
     def _coerce_evaluation_results(
@@ -297,21 +287,14 @@ class DynamicRunEvaluator(RunEvaluator):
     ) -> Union[EvaluationResult, EvaluationResults]:
         if "results" in results:
             cp = results.copy()
-            cp["results"] = [
-                self._coerce_evaluation_result(r, source_run_id=source_run_id)
-                for r in results["results"]
-            ]
+            cp["results"] = [self._coerce_evaluation_result(r, source_run_id=source_run_id) for r in results["results"]]
             return EvaluationResults(**cp)
 
-        return self._coerce_evaluation_result(
-            cast(dict, results), source_run_id=source_run_id, allow_no_key=True
-        )
+        return self._coerce_evaluation_result(cast(dict, results), source_run_id=source_run_id, allow_no_key=True)
 
     def _format_result(
         self,
-        result: Union[
-            EvaluationResult, EvaluationResults, dict, str, int, bool, float, list
-        ],
+        result: Union[EvaluationResult, EvaluationResults, dict, str, int, bool, float, list],
         source_run_id: uuid.UUID,
     ) -> Union[EvaluationResult, EvaluationResults]:
         if isinstance(result, EvaluationResult):
@@ -407,9 +390,7 @@ class DynamicRunEvaluator(RunEvaluator):
         )
         return self._format_result(result, evaluator_run_id)
 
-    def __call__(
-        self, run: Run, example: Optional[Example] = None
-    ) -> Union[EvaluationResult, EvaluationResults]:
+    def __call__(self, run: Run, example: Optional[Example] = None) -> Union[EvaluationResult, EvaluationResults]:
         """Make the evaluator callable, allowing it to be used like a function.
 
         This method enables the evaluator instance to be called directly, forwarding the
@@ -430,9 +411,7 @@ class DynamicRunEvaluator(RunEvaluator):
 
 
 def run_evaluator(
-    func: Callable[
-        [Run, Optional[Example]], Union[_RUNNABLE_OUTPUT, Awaitable[_RUNNABLE_OUTPUT]]
-    ],
+    func: Callable[[Run, Optional[Example]], Union[_RUNNABLE_OUTPUT, Awaitable[_RUNNABLE_OUTPUT]]],
 ):
     """Create a run evaluator from a function.
 
@@ -481,18 +460,14 @@ class DynamicComparisonRunEvaluator:
         def process_inputs(inputs: dict) -> dict:
             if prepare_inputs is None:
                 return inputs
-            (_, _, traced_inputs) = prepare_inputs(
-                inputs.get("runs"), inputs.get("example")
-            )
+            (_, _, traced_inputs) = prepare_inputs(inputs.get("runs"), inputs.get("example"))
             return traced_inputs
 
         wraps(func)(self)
         from langsmith import run_helpers  # type: ignore
 
         if afunc is not None:
-            self.afunc = run_helpers.ensure_traceable(
-                afunc, process_inputs=process_inputs
-            )
+            self.afunc = run_helpers.ensure_traceable(afunc, process_inputs=process_inputs)
             self._name = getattr(afunc, "__name__", "DynamicRunEvaluator")
         if inspect.iscoroutinefunction(func):
             if afunc is not None:
@@ -501,9 +476,7 @@ class DynamicComparisonRunEvaluator:
                     "also provided. If providing both, func should be a regular "
                     "function to avoid ambiguity."
                 )
-            self.afunc = run_helpers.ensure_traceable(
-                func, process_inputs=process_inputs
-            )
+            self.afunc = run_helpers.ensure_traceable(func, process_inputs=process_inputs)
             self._name = getattr(func, "__name__", "DynamicRunEvaluator")
         else:
             self.func = run_helpers.ensure_traceable(
@@ -527,9 +500,7 @@ class DynamicComparisonRunEvaluator:
         """
         return hasattr(self, "afunc")
 
-    def compare_runs(
-        self, runs: Sequence[Run], example: Optional[Example] = None
-    ) -> ComparisonEvaluationResult:
+    def compare_runs(self, runs: Sequence[Run], example: Optional[Example] = None) -> ComparisonEvaluationResult:
         """Compare runs to score preferences.
 
         Args:
@@ -553,9 +524,7 @@ class DynamicComparisonRunEvaluator:
         )
         return self._format_results(result, source_run_id, runs)
 
-    async def acompare_runs(
-        self, runs: Sequence[Run], example: Optional[Example] = None
-    ) -> ComparisonEvaluationResult:
+    async def acompare_runs(self, runs: Sequence[Run], example: Optional[Example] = None) -> ComparisonEvaluationResult:
         """Evaluate a run asynchronously using the wrapped async function.
 
         This method directly invokes the wrapped async function with the
@@ -581,9 +550,7 @@ class DynamicComparisonRunEvaluator:
         )
         return self._format_results(result, source_run_id, runs)
 
-    def __call__(
-        self, runs: Sequence[Run], example: Optional[Example] = None
-    ) -> ComparisonEvaluationResult:
+    def __call__(self, runs: Sequence[Run], example: Optional[Example] = None) -> ComparisonEvaluationResult:
         """Make the evaluator callable, allowing it to be used like a function.
 
         This method enables the evaluator instance to be called directly, forwarding the
@@ -633,15 +600,10 @@ class DynamicComparisonRunEvaluator:
             if "key" not in result:
                 result["key"] = self._name
         else:
-            msg = (
-                "Expected 'dict', 'list' or 'ComparisonEvaluationResult' result "
-                f"object. Received: {result=}"
-            )
+            msg = f"Expected 'dict', 'list' or 'ComparisonEvaluationResult' result object. Received: {result=}"
             raise ValueError(msg)
         try:
-            return ComparisonEvaluationResult(
-                **{"source_run_id": source_run_id, **result}
-            )
+            return ComparisonEvaluationResult(**{"source_run_id": source_run_id, **result})
         except ValidationError as e:
             raise ValueError(
                 f"Expected a dictionary with a 'key' and dictionary of scores mapping"
@@ -679,15 +641,9 @@ def _normalize_evaluator_func(
     )
     sig = inspect.signature(func)
     all_args = [pname for pname, p in sig.parameters.items() if p.kind != p.VAR_KEYWORD]
-    args_with_defaults = [
-        pname
-        for pname, p in sig.parameters.items()
-        if p.default is not inspect.Parameter.empty
-    ]
+    args_with_defaults = [pname for pname, p in sig.parameters.items() if p.default is not inspect.Parameter.empty]
     if not all_args or (
-        not all(
-            pname in supported_args or pname in args_with_defaults for pname in all_args
-        )
+        not all(pname in supported_args or pname in args_with_defaults for pname in all_args)
         and len([a for a in all_args if a not in args_with_defaults]) != 2
     ):
         msg = (
@@ -699,9 +655,7 @@ def _normalize_evaluator_func(
         raise ValueError(msg)
     # For backwards compatibility we assume custom arg names are Run and Example
     # types, respectively.
-    elif not all(
-        pname in supported_args or pname in args_with_defaults for pname in all_args
-    ) or all_args == [
+    elif not all(pname in supported_args or pname in args_with_defaults for pname in all_args) or all_args == [
         "run",
         "example",
     ]:
@@ -709,9 +663,7 @@ def _normalize_evaluator_func(
     else:
         if inspect.iscoroutinefunction(func):
 
-            def _prepare_inputs(
-                run: Run, example: Optional[Example]
-            ) -> tuple[list, dict, dict]:
+            def _prepare_inputs(run: Run, example: Optional[Example]) -> tuple[list, dict, dict]:
                 arg_map = {
                     "run": run,
                     "example": example,
@@ -740,24 +692,16 @@ def _normalize_evaluator_func(
                         )
                 return args, kwargs, traced_inputs
 
-            async def awrapper(
-                run: Run, example: Optional[Example]
-            ) -> _RUNNABLE_OUTPUT:
+            async def awrapper(run: Run, example: Optional[Example]) -> _RUNNABLE_OUTPUT:
                 (args, kwargs, _) = _prepare_inputs(run, example)
                 return await func(*args, **kwargs)
 
-            awrapper.__name__ = (
-                getattr(func, "__name__")
-                if hasattr(func, "__name__")
-                else awrapper.__name__
-            )
+            awrapper.__name__ = getattr(func, "__name__") if hasattr(func, "__name__") else awrapper.__name__
             return (awrapper, _prepare_inputs)  # type: ignore[return-value]
 
         else:
 
-            def _prepare_inputs(
-                run: Run, example: Optional[Example]
-            ) -> tuple[list, dict, dict]:
+            def _prepare_inputs(run: Run, example: Optional[Example]) -> tuple[list, dict, dict]:
                 arg_map = {
                     "run": run,
                     "example": example,
@@ -790,11 +734,7 @@ def _normalize_evaluator_func(
                 (args, kwargs, _) = _prepare_inputs(run, example)
                 return func(*args, **kwargs)
 
-            wrapper.__name__ = (
-                getattr(func, "__name__")
-                if hasattr(func, "__name__")
-                else wrapper.__name__
-            )
+            wrapper.__name__ = getattr(func, "__name__") if hasattr(func, "__name__") else wrapper.__name__
             return (wrapper, _prepare_inputs)  # type: ignore[return-value]
 
 
@@ -810,15 +750,9 @@ def _normalize_comparison_evaluator_func(
     supported_args = ("runs", "example", "inputs", "outputs", "reference_outputs")
     sig = inspect.signature(func)
     all_args = [pname for pname, p in sig.parameters.items() if p.kind != p.VAR_KEYWORD]
-    args_with_defaults = [
-        pname
-        for pname, p in sig.parameters.items()
-        if p.default is not inspect.Parameter.empty
-    ]
+    args_with_defaults = [pname for pname, p in sig.parameters.items() if p.default is not inspect.Parameter.empty]
     if not all_args or (
-        not all(
-            pname in supported_args or pname in args_with_defaults for pname in all_args
-        )
+        not all(pname in supported_args or pname in args_with_defaults for pname in all_args)
         and len([a for a in all_args if a not in args_with_defaults]) != 2
     ):
         msg = (
@@ -830,9 +764,7 @@ def _normalize_comparison_evaluator_func(
         raise ValueError(msg)
     # For backwards compatibility we assume custom arg names are List[Run] and
     # List[Example] types, respectively.
-    elif not all(
-        pname in supported_args or pname in args_with_defaults for pname in all_args
-    ) or all_args == [
+    elif not all(pname in supported_args or pname in args_with_defaults for pname in all_args) or all_args == [
         "runs",
         "example",
     ]:
@@ -840,9 +772,7 @@ def _normalize_comparison_evaluator_func(
     else:
         if inspect.iscoroutinefunction(func):
 
-            def _prepare_inputs(
-                runs: Sequence[Run], example: Optional[Example]
-            ) -> tuple[list, dict, dict]:
+            def _prepare_inputs(runs: Sequence[Run], example: Optional[Example]) -> tuple[list, dict, dict]:
                 arg_map = {
                     "runs": runs,
                     "example": example,
@@ -870,24 +800,16 @@ def _normalize_comparison_evaluator_func(
                         )
                 return args, kwargs, traced_inputs
 
-            async def awrapper(
-                runs: Sequence[Run], example: Optional[Example]
-            ) -> _COMPARISON_OUTPUT:
+            async def awrapper(runs: Sequence[Run], example: Optional[Example]) -> _COMPARISON_OUTPUT:
                 (args, kwargs, _) = _prepare_inputs(runs, example)
                 return await func(*args, **kwargs)
 
-            awrapper.__name__ = (
-                getattr(func, "__name__")
-                if hasattr(func, "__name__")
-                else awrapper.__name__
-            )
+            awrapper.__name__ = getattr(func, "__name__") if hasattr(func, "__name__") else awrapper.__name__
             return awrapper, _prepare_inputs  # type: ignore[return-value]
 
         else:
 
-            def _prepare_inputs(
-                runs: Sequence[Run], example: Optional[Example]
-            ) -> tuple[list, dict, dict]:
+            def _prepare_inputs(runs: Sequence[Run], example: Optional[Example]) -> tuple[list, dict, dict]:
                 arg_map = {
                     "runs": runs,
                     "example": example,
@@ -915,17 +837,11 @@ def _normalize_comparison_evaluator_func(
                         )
                 return args, kwargs, traced_inputs
 
-            def wrapper(
-                runs: Sequence[Run], example: Optional[Example]
-            ) -> _COMPARISON_OUTPUT:
+            def wrapper(runs: Sequence[Run], example: Optional[Example]) -> _COMPARISON_OUTPUT:
                 (args, kwargs, _) = _prepare_inputs(runs, example)
                 return func(*args, **kwargs)
 
-            wrapper.__name__ = (
-                getattr(func, "__name__")
-                if hasattr(func, "__name__")
-                else wrapper.__name__
-            )
+            wrapper.__name__ = getattr(func, "__name__") if hasattr(func, "__name__") else wrapper.__name__
             return wrapper, _prepare_inputs  # type: ignore[return-value]
 
 
@@ -941,9 +857,7 @@ def _format_evaluator_result(
         )
     elif isinstance(result, list):
         if not all(isinstance(x, dict) for x in result):
-            raise ValueError(
-                f"Expected a list of dicts or EvaluationResults. Received {result}."
-            )
+            raise ValueError(f"Expected a list of dicts or EvaluationResults. Received {result}.")
         result = {"results": result}  # type: ignore[misc]
     elif isinstance(result, str):
         result = {"value": result}
@@ -951,8 +865,7 @@ def _format_evaluator_result(
         pass
     else:
         raise ValueError(
-            f"Expected a dict, str, bool, int, float, list, EvaluationResult, or "
-            f"EvaluationResults. Got {result}"
+            f"Expected a dict, str, bool, int, float, list, EvaluationResult, or EvaluationResults. Got {result}"
         )
     return result
 
@@ -973,21 +886,12 @@ def _normalize_summary_evaluator(func: Callable) -> SUMMARY_EVALUATOR_T:
     supported_args = ("runs", "examples", "inputs", "outputs", "reference_outputs")
     sig = inspect.signature(func)
     all_args = [pname for pname, p in sig.parameters.items()]
-    args_with_defaults = [
-        pname
-        for pname, p in sig.parameters.items()
-        if p.default is not inspect.Parameter.empty
-    ]
+    args_with_defaults = [pname for pname, p in sig.parameters.items() if p.default is not inspect.Parameter.empty]
     if not all_args or (
-        not all(
-            pname in supported_args or pname in args_with_defaults for pname in all_args
-        )
+        not all(pname in supported_args or pname in args_with_defaults for pname in all_args)
         and len([a for a in all_args if a not in args_with_defaults]) != 2
     ):
-        msg = (
-            f"Invalid evaluator function. Must have at least one "
-            f"argument. Supported arguments are {supported_args}."
-        )
+        msg = f"Invalid evaluator function. Must have at least one argument. Supported arguments are {supported_args}."
         if all_args:
             msg += f" Received arguments {all_args}."
         raise ValueError(msg)
@@ -1028,7 +932,5 @@ def _normalize_summary_evaluator(func: Callable) -> SUMMARY_EVALUATOR_T:
                 return result
             return _format_evaluator_result(result)  # type: ignore
 
-        wrapper.__name__ = (
-            getattr(func, "__name__") if hasattr(func, "__name__") else wrapper.__name__
-        )
+        wrapper.__name__ = getattr(func, "__name__") if hasattr(func, "__name__") else wrapper.__name__
         return wrapper  # type: ignore[return-value]

@@ -1,5 +1,3 @@
-# File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
-
 from .beta import (
     Beta,
     AsyncBeta,
@@ -7,6 +5,14 @@ from .beta import (
     AsyncBetaWithRawResponse,
     BetaWithStreamingResponse,
     AsyncBetaWithStreamingResponse,
+)
+from .files import (
+    Files,
+    AsyncFiles,
+    FilesWithRawResponse,
+    AsyncFilesWithRawResponse,
+    FilesWithStreamingResponse,
+    AsyncFilesWithStreamingResponse,
 )
 from .models import (
     Models,
@@ -16,6 +22,14 @@ from .models import (
     ModelsWithStreamingResponse,
     AsyncModelsWithStreamingResponse,
 )
+from .skills import (
+    Skills,
+    AsyncSkills,
+    SkillsWithRawResponse,
+    AsyncSkillsWithRawResponse,
+    SkillsWithStreamingResponse,
+    AsyncSkillsWithStreamingResponse,
+)
 from .messages import (
     Messages,
     AsyncMessages,
@@ -24,22 +38,24 @@ from .messages import (
     MessagesWithStreamingResponse,
     AsyncMessagesWithStreamingResponse,
 )
-from .completions import (
-    Completions,
-    AsyncCompletions,
-    CompletionsWithRawResponse,
-    AsyncCompletionsWithRawResponse,
-    CompletionsWithStreamingResponse,
-    AsyncCompletionsWithStreamingResponse,
+from .organization import (
+    Organization,
+    AsyncOrganization,
+    OrganizationWithRawResponse,
+    AsyncOrganizationWithRawResponse,
+    OrganizationWithStreamingResponse,
+    AsyncOrganizationWithStreamingResponse,
+)
+from .user_profiles import (
+    UserProfiles,
+    AsyncUserProfiles,
+    UserProfilesWithRawResponse,
+    AsyncUserProfilesWithRawResponse,
+    UserProfilesWithStreamingResponse,
+    AsyncUserProfilesWithStreamingResponse,
 )
 
 __all__ = [
-    "Completions",
-    "AsyncCompletions",
-    "CompletionsWithRawResponse",
-    "AsyncCompletionsWithRawResponse",
-    "CompletionsWithStreamingResponse",
-    "AsyncCompletionsWithStreamingResponse",
     "Messages",
     "AsyncMessages",
     "MessagesWithRawResponse",
@@ -52,6 +68,30 @@ __all__ = [
     "AsyncModelsWithRawResponse",
     "ModelsWithStreamingResponse",
     "AsyncModelsWithStreamingResponse",
+    "Files",
+    "AsyncFiles",
+    "FilesWithRawResponse",
+    "AsyncFilesWithRawResponse",
+    "FilesWithStreamingResponse",
+    "AsyncFilesWithStreamingResponse",
+    "Skills",
+    "AsyncSkills",
+    "SkillsWithRawResponse",
+    "AsyncSkillsWithRawResponse",
+    "SkillsWithStreamingResponse",
+    "AsyncSkillsWithStreamingResponse",
+    "UserProfiles",
+    "AsyncUserProfiles",
+    "UserProfilesWithRawResponse",
+    "AsyncUserProfilesWithRawResponse",
+    "UserProfilesWithStreamingResponse",
+    "AsyncUserProfilesWithStreamingResponse",
+    "Organization",
+    "AsyncOrganization",
+    "OrganizationWithRawResponse",
+    "AsyncOrganizationWithRawResponse",
+    "OrganizationWithStreamingResponse",
+    "AsyncOrganizationWithStreamingResponse",
     "Beta",
     "AsyncBeta",
     "BetaWithRawResponse",

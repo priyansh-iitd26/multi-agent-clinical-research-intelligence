@@ -93,16 +93,12 @@ def _public_fields(value: Any) -> dict[str, Any] | None:
     """Public, non-callable attributes of a dataclass/object, or None."""
     fields: dict[str, Any] | None
     if dataclasses.is_dataclass(value) and not isinstance(value, type):
-        fields = {
-            f.name: getattr(value, f.name, None) for f in dataclasses.fields(value)
-        }
+        fields = {f.name: getattr(value, f.name, None) for f in dataclasses.fields(value)}
     else:
         fields = getattr(value, "__dict__", None)
     if not fields:
         return None
-    return {
-        k: v for k, v in fields.items() if not k.startswith("_") and not callable(v)
-    }
+    return {k: v for k, v in fields.items() if not k.startswith("_") and not callable(v)}
 
 
 def _clean(value: Any, depth: int = 0, seen: frozenset[int] = frozenset()) -> Any:
@@ -247,9 +243,7 @@ def describe_event(event: Any) -> tuple[str, dict[str, Any], bool]:
         payload["length"] = len(history)
         inbound = role == "user"
     elif etype == "handoff":
-        payload["from_agent"] = getattr(
-            getattr(event, "from_agent", None), "name", None
-        )
+        payload["from_agent"] = getattr(getattr(event, "from_agent", None), "name", None)
         payload["to_agent"] = getattr(getattr(event, "to_agent", None), "name", None)
     elif etype == "guardrail_tripped":
         payload["message"] = _stringify(getattr(event, "message", None))
@@ -454,11 +448,7 @@ class _AgentsRealtimeTracer:
     def record_first_audio(self, received_at: float) -> None:
         """Record ``latency_to_first_audio_ms`` on the open turn, once per turn."""
         if self._latency_since is not None:
-            self._trace.add_turn_metadata(
-                latency_to_first_audio_ms=round(
-                    (received_at - self._latency_since) * 1000
-                )
-            )
+            self._trace.add_turn_metadata(latency_to_first_audio_ms=round((received_at - self._latency_since) * 1000))
             self._latency_since = None
 
     def _notify(self, role: str | None, text: str | None) -> None:
@@ -581,8 +571,7 @@ class _TracedRealtimeSession:
                     self._ctx.__exit__(*sys.exc_info())
                 except Exception:
                     logger.debug(
-                        "voice tracing: error unwinding context after a failed "
-                        "session enter",
+                        "voice tracing: error unwinding context after a failed session enter",
                         exc_info=True,
                     )
             await self._session.__aexit__(*sys.exc_info())

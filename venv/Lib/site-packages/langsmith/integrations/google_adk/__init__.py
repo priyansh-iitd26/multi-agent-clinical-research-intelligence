@@ -36,9 +36,7 @@ def configure_google_adk(
     global _patched
 
     if _patched:
-        set_tracing_config(
-            name=name, project_name=project_name, metadata=metadata, tags=tags
-        )
+        set_tracing_config(name=name, project_name=project_name, metadata=metadata, tags=tags)
         return True
 
     try:
@@ -48,9 +46,7 @@ def configure_google_adk(
         logger.warning(f"Missing dependency: {e}")
         return False
 
-    set_tracing_config(
-        name=name, project_name=project_name, metadata=metadata, tags=tags
-    )
+    set_tracing_config(name=name, project_name=project_name, metadata=metadata, tags=tags)
 
     from ._client import (
         wrap_agent_run_async,

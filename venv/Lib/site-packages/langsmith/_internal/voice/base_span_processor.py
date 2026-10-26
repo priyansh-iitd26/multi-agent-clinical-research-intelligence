@@ -87,9 +87,7 @@ class BaseLangSmithSpanProcessor(SpanProcessor):
         if downstream_processor is None:
             from langsmith.integrations.otel.processor import OtelExporter
 
-            downstream_processor = BatchSpanProcessor(
-                OtelExporter(url=endpoint, api_key=api_key, project=project)
-            )
+            downstream_processor = BatchSpanProcessor(OtelExporter(url=endpoint, api_key=api_key, project=project))
         self.downstream = downstream_processor
         self.audio_size_limit_bytes = audio_size_limit_bytes
         self._static_metadata = metadata or {}
@@ -119,8 +117,7 @@ class BaseLangSmithSpanProcessor(SpanProcessor):
             export = self._dispatch(tspan) is not False
         except Exception:
             logger.warning(
-                "langsmith voice: failed processing span %r; "
-                "exporting it untranslated.",
+                "langsmith voice: failed processing span %r; exporting it untranslated.",
                 getattr(span, "name", "?"),
                 exc_info=True,
             )
@@ -193,9 +190,7 @@ class BaseLangSmithSpanProcessor(SpanProcessor):
         """Drop a trace's cached thread id (called from subclass cleanup)."""
         self._thread_id_by_trace.pop(trace_id, None)
 
-    def _attach_audio(
-        self, tspan: TranslatedSpan, *, name: str, data: bytes, mime_type: str
-    ) -> bool:
+    def _attach_audio(self, tspan: TranslatedSpan, *, name: str, data: bytes, mime_type: str) -> bool:
         """Attach audio bytes to a span via ``langsmith.attachments`` (base64).
 
         Honors ``audio_size_limit_bytes`` (skips oversize audio). Returns whether
@@ -204,10 +199,7 @@ class BaseLangSmithSpanProcessor(SpanProcessor):
         """
         if not data:
             return False
-        if (
-            self.audio_size_limit_bytes is not None
-            and len(data) > self.audio_size_limit_bytes
-        ):
+        if self.audio_size_limit_bytes is not None and len(data) > self.audio_size_limit_bytes:
             return False
         tspan.attributes["langsmith.attachments"] = json.dumps(
             [

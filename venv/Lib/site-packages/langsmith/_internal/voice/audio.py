@@ -35,9 +35,7 @@ def pcm_to_wav(pcm: bytes, sample_rate: int, num_channels: int = 1) -> bytes:
     return buf.getvalue()
 
 
-def _layout_chunks_to_play_time(
-    chunks: list[tuple[float, bytes]], sample_rate: int
-) -> list[tuple[float, bytes]]:
+def _layout_chunks_to_play_time(chunks: list[tuple[float, bytes]], sample_rate: int) -> list[tuple[float, bytes]]:
     """Rewrite receipt timestamps into natural-play timestamps.
 
     Receipt times reflect when bytes arrived from the source, not when they

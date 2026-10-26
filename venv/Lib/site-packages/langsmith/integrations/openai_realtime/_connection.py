@@ -77,10 +77,7 @@ def is_inbound(event_type: str) -> bool:
     their transcription) → goes in span ``inputs``. Everything else is the
     model/server talking back → span ``outputs``.
     """
-    return (
-        event_type.startswith("input_audio_buffer")
-        or "input_audio_transcription" in event_type
-    )
+    return event_type.startswith("input_audio_buffer") or "input_audio_transcription" in event_type
 
 
 def response_assistant_output(response: Any) -> dict[str, Any]:
@@ -167,10 +164,7 @@ def usage_metadata_from_usage(usage: Any) -> dict[str, Any] | None:
     if usage is None:
         return None
     usage_dict = _usage_to_dict(usage)
-    if not any(
-        usage_dict.get(key) is not None
-        for key in ("input_tokens", "output_tokens", "total_tokens")
-    ):
+    if not any(usage_dict.get(key) is not None for key in ("input_tokens", "output_tokens", "total_tokens")):
         return None
     return dict(_create_usage_metadata(usage_dict))
 
@@ -240,16 +234,12 @@ class _RealtimeTracer:
             return
         if etype == "response.output_audio_transcript.done":
             # Already the model span's content; fold into the rollup, don't span.
-            self._session.add_message(
-                "assistant", getattr(event, "transcript", "") or ""
-            )
+            self._session.add_message("assistant", getattr(event, "transcript", "") or "")
             return
 
         self._before_span(event, received_at)
 
-        cm_span = self._session.event_span(
-            event, received_at, name=etype, **self._span_kwargs(event)
-        )
+        cm_span = self._session.event_span(event, received_at, name=etype, **self._span_kwargs(event))
         run = cm_span.__enter__()
         if etype == "conversation.item.input_audio_transcription.failed":
             run.error = f"transcription_failed: {getattr(event, 'error', None)}"
@@ -313,9 +303,7 @@ class _RealtimeTracer:
     def _record_first_audio(self, received_at: float) -> None:
         if self._await_audio_since is not None:
             self._session.add_turn_metadata(
-                latency_to_first_audio_ms=round(
-                    (received_at - self._await_audio_since) * 1000
-                )
+                latency_to_first_audio_ms=round((received_at - self._await_audio_since) * 1000)
             )
             self._await_audio_since = None
 
@@ -344,9 +332,7 @@ class _TracedRealtimeConnection:
     (optionally) feed PCM for the stereo conversation WAV.
     """
 
-    def __init__(
-        self, connection: Any, tracer: _RealtimeTracer, session: EventSession
-    ) -> None:
+    def __init__(self, connection: Any, tracer: _RealtimeTracer, session: EventSession) -> None:
         # Plain assignment is safe: this proxy only overrides ``__getattr__``
         # (read miss) — not ``__setattr__`` — so writes never delegate.
         self._connection = connection
@@ -441,9 +427,7 @@ class _RealtimeTracingSession:
             replicas=self._replicas,
         )
         self._ctx.__enter__()
-        self._tracer = _RealtimeTracer(
-            self._session, is_agent_speaking=self._is_agent_speaking
-        )
+        self._tracer = _RealtimeTracer(self._session, is_agent_speaking=self._is_agent_speaking)
         return _TracedRealtimeConnection(self._connection, self._tracer, self._session)
 
     async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> bool:

@@ -97,9 +97,7 @@ def set_runtime_overrides(
         import langsmith
 
 
-        async def temporal_aio_to_thread(
-            default_aio_to_thread, ctx, func, /, *args, **kwargs
-        ):
+        async def temporal_aio_to_thread(default_aio_to_thread, ctx, func, /, *args, **kwargs):
             # Use the default implementation when not in a workflow
             if not temporalio.workflow.in_workflow():
                 return await default_aio_to_thread(ctx, func, *args, **kwargs)

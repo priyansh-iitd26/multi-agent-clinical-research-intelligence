@@ -33,8 +33,7 @@ def cosine_similarity(X: Matrix, Y: Matrix) -> np.ndarray:
     Y = np.array(Y)
     if X.shape[1] != Y.shape[1]:
         raise ValueError(
-            f"Number of columns in X and Y must be the same. X has shape {X.shape} "
-            f"and Y has shape {Y.shape}."
+            f"Number of columns in X and Y must be the same. X has shape {X.shape} and Y has shape {Y.shape}."
         )
     try:
         import simsimd as simd  # type: ignore
@@ -72,9 +71,7 @@ def _get_openai_encoder() -> Callable[[Sequence[str]], Sequence[Sequence[float]]
 
     def encode_text(texts: Sequence[str]) -> Sequence[Sequence[float]]:
         client = OpenAIClient()
-        response = client.embeddings.create(
-            input=list(texts), model="text-embedding-3-small"
-        )
+        response = client.embeddings.create(input=list(texts), model="text-embedding-3-small")
         return [d.embedding for d in response.data]
 
     return encode_text
@@ -102,10 +99,7 @@ class EmbeddingDistance:
         try:
             import numpy as np
         except ImportError:
-            raise ImportError(
-                "The EmbeddingDistance class requires NumPy. Please install it with "
-                "`pip install numpy`."
-            )
+            raise ImportError("The EmbeddingDistance class requires NumPy. Please install it with `pip install numpy`.")
         embeddings = self.encoder([prediction, reference])
         vector = np.array(embeddings)
         return self._compute_distance(vector[0], vector[1]).item()

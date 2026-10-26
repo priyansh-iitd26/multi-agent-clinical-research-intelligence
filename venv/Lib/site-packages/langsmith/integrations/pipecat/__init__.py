@@ -88,7 +88,6 @@ def configure_pipecat(
         provider.add_span_processor(processor)
     else:
         logger.warning(
-            "Active OTel TracerProvider is not an SDK TracerProvider; "
-            "PipecatLangSmithSpanProcessor was not registered."
+            "Active OTel TracerProvider is not an SDK TracerProvider; PipecatLangSmithSpanProcessor was not registered."
         )
     return processor

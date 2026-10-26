@@ -1,19 +1,21 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from collections.abc import Iterable
 from collections.abc import Mapping
 from collections.abc import Sequence
 import inspect
 import types
 from typing import Any
-from typing import Callable
 from typing import cast
 from typing import Final
 from typing import TYPE_CHECKING
+from typing import TypeAlias
 import warnings
 
 from . import _tracing
 from ._callers import _multicall
+from ._compat import DistFacade
 from ._hooks import _HookImplFunction
 from ._hooks import _Namespace
 from ._hooks import _Plugin
@@ -28,12 +30,13 @@ from ._result import Result
 
 
 if TYPE_CHECKING:
-    # importtlib.metadata import is slow, defer it.
     import importlib.metadata
 
 
-_BeforeTrace = Callable[[str, Sequence[HookImpl], Mapping[str, Any]], None]
-_AfterTrace = Callable[[Result[Any], str, Sequence[HookImpl], Mapping[str, Any]], None]
+_BeforeTrace: TypeAlias = Callable[[str, Sequence[HookImpl], Mapping[str, Any]], None]
+_AfterTrace: TypeAlias = Callable[
+    [Result[Any], str, Sequence[HookImpl], Mapping[str, Any]], None
+]
 
 
 def _warn_for_function(warning: Warning, function: Callable[..., object]) -> None:
@@ -44,6 +47,82 @@ def _warn_for_function(warning: Warning, function: Callable[..., object]) -> Non
         lineno=func.__code__.co_firstlineno,
         filename=func.__code__.co_filename,
     )
+
+
+_ABSENT: Final = object()
+
+
+def _instance_dict(obj: object) -> dict[str, Any]:
+    """Return ``obj``'s own ``__dict__``, without going through ``getattr``."""
+    try:
+        instance_dict = object.__getattribute__(obj, "__dict__")
+    except AttributeError:
+        return {}
+    return instance_dict if isinstance(instance_dict, dict) else {}
+
+
+def _static_hook_attr(
+    obj: object, name: str
+) -> tuple[object, Callable[..., object]] | None:
+    """Return ``(marker_holder, function)`` for ``name`` on ``obj``, else None.
+
+    Lookup avoids ``getattr()`` so that properties, ``cached_property`` and
+    other descriptors are skipped instead of being evaluated -- hooks provided
+    through such a descriptor (or only through ``__getattr__``) are not
+    supported. Only plain functions, :class:`classmethod`, :class:`staticmethod`
+    and already-bound :class:`~types.MethodType` objects are hookable.
+
+    ``marker_holder`` is the object that may carry the hookimpl/hookspec
+    options: the ``classmethod``/``staticmethod`` wrapper when the marker was
+    applied above it, the underlying function otherwise. ``function`` is bound
+    exactly the way ``getattr()`` would have bound it.
+    """
+    if not (inspect.isclass(obj) or inspect.ismodule(obj)):
+        # Values stored on the instance itself -- in ``__dict__`` or in a
+        # ``__slots__`` slot -- are handed out by ``getattr()`` as they are,
+        # bypassing the descriptor protocol, so they must not be bound here.
+        value = _instance_dict(obj).get(name, _ABSENT)
+        if value is _ABSENT:
+            slot = inspect.getattr_static(obj, name, None)
+            if isinstance(slot, types.MemberDescriptorType):
+                # Reading a slot runs no user code.
+                try:
+                    value = slot.__get__(obj, type(obj))
+                except AttributeError:
+                    value = _ABSENT
+        if value is not _ABSENT:
+            if isinstance(value, types.MethodType):
+                return value.__func__, value
+            if inspect.isfunction(value):
+                return value, value
+            return None
+
+    static: object = inspect.getattr_static(obj, name, None)
+    if isinstance(static, staticmethod):
+        return static, static.__func__
+    if isinstance(static, classmethod):
+        owner = obj if inspect.isclass(obj) else type(obj)
+        return static, cast(Callable[..., object], static.__get__(owner, owner))
+    if isinstance(static, types.MethodType):
+        return static.__func__, static
+    if inspect.isfunction(static):
+        if inspect.isclass(obj) or inspect.ismodule(obj):
+            return static, static
+        return static, static.__get__(obj, type(obj))
+    return None
+
+
+def _get_marker_opts(holder: object, attrname: str) -> dict[str, Any] | None:
+    """Read marker options from ``holder``, falling back to ``__func__``."""
+    opts = getattr(holder, attrname, None)
+    if opts is not None:
+        return opts if isinstance(opts, dict) else None
+    func = getattr(holder, "__func__", None)
+    if func is not None:
+        opts = getattr(func, attrname, None)
+        if opts is not None:
+            return opts if isinstance(opts, dict) else None
+    return None
 
 
 class PluginValidationError(Exception):
@@ -57,24 +136,6 @@ class PluginValidationError(Exception):
         super().__init__(message)
         #: The plugin which failed validation.
         self.plugin = plugin
-
-
-class DistFacade:
-    """Emulate a pkg_resources Distribution"""
-
-    def __init__(self, dist: importlib.metadata.Distribution) -> None:
-        self._dist = dist
-
-    @property
-    def project_name(self) -> str:
-        name: str = self.metadata["name"]
-        return name
-
-    def __getattr__(self, attr: str, default: Any | None = None) -> Any:
-        return getattr(self._dist, attr, default)
-
-    def __dir__(self) -> list[str]:
-        return sorted(dir(self._dist) + ["_dist", "project_name"])
 
 
 class PluginManager:
@@ -98,7 +159,9 @@ class PluginManager:
         #: The project name.
         self.project_name: Final = project_name
         self._name2plugin: Final[dict[str, _Plugin]] = {}
-        self._plugin_distinfo: Final[list[tuple[_Plugin, DistFacade]]] = []
+        self._plugin_distinfo: Final[
+            list[tuple[_Plugin, importlib.metadata.Distribution]]
+        ] = []
         #: The "hook relay", used to call a hook on all registered plugins.
         #: See :ref:`calling`.
         self.hook: Final = HookRelay()
@@ -132,6 +195,12 @@ class PluginManager:
 
         If the plugin is already registered, raises a :exc:`ValueError`.
         """
+        if plugin is None:
+            # Registering a `None` plugin causes problems (#731). However, some
+            # users are doing it, so can't error out (#749). Just ignore
+            # instead.
+            return None
+
         plugin_name = name or self.get_canonical_name(plugin)
 
         if plugin_name in self._name2plugin:
@@ -148,26 +217,42 @@ class PluginManager:
                 f"{plugin_name}={plugin}\n{self._name2plugin}"
             )
 
-        # XXX if an error happens we should make sure no state has been
-        # changed at point of return
-        self._name2plugin[plugin_name] = plugin
-
-        # register matching hook implementations of the plugin
-        for name in dir(plugin):
-            hookimpl_opts = self.parse_hookimpl_opts(plugin, name)
+        # Validate every hookimpl before changing any state, so a plugin that
+        # fails validation leaves the manager untouched.
+        hookimpls: list[tuple[str, HookImpl, bool]] = []
+        for attr_name in dir(plugin):
+            hookimpl_opts = self.parse_hookimpl_opts(plugin, attr_name)
             if hookimpl_opts is not None:
                 normalize_hookimpl_opts(hookimpl_opts)
-                method: _HookImplFunction[object] = getattr(plugin, name)
+                found = _static_hook_attr(plugin, attr_name)
+                # Only reachable when a subclass overrode parse_hookimpl_opts
+                # to claim an attribute pluggy cannot bind.
+                assert found is not None, (
+                    f"{plugin!r}.{attr_name} is not a hookable attribute"
+                )
+                method: _HookImplFunction[object] = found[1]
                 hookimpl = HookImpl(plugin, plugin_name, method, hookimpl_opts)
-                name = hookimpl_opts.get("specname") or name
-                hook: HookCaller | None = getattr(self.hook, name, None)
-                if hook is None:
-                    hook = HookCaller(name, self._hookexec)
-                    setattr(self.hook, name, hook)
-                elif hook.has_spec():
+                hook_name = hookimpl_opts.get("specname") or attr_name
+                hook: HookCaller | None = getattr(self.hook, hook_name, None)
+                verified = False
+                if hook is not None and hook.has_spec():
                     self._verify_hook(hook, hookimpl)
-                    hook._maybe_apply_history(hookimpl)
-                hook._add_hookimpl(hookimpl)
+                    verified = True
+                hookimpls.append((hook_name, hookimpl, verified))
+
+        self._name2plugin[plugin_name] = plugin
+        for hook_name, hookimpl, verified in hookimpls:
+            hook = getattr(self.hook, hook_name, None)
+            if hook is None:
+                hook = HookCaller(hook_name, self._hookexec)
+                setattr(self.hook, hook_name, hook)
+            elif not verified and hook.has_spec():
+                # An earlier impl's historic replay added this spec after the
+                # first pass. Failing here leaves the plugin partially
+                # registered, but only user code during replay can get here.
+                self._verify_hook(hook, hookimpl)
+            hook._maybe_apply_history(hookimpl)
+            hook._add_hookimpl(hookimpl)
         return plugin_name
 
     def parse_hookimpl_opts(self, plugin: _Plugin, name: str) -> HookimplOpts | None:
@@ -180,20 +265,18 @@ class PluginManager:
         This method can be overridden by ``PluginManager`` subclasses to
         customize how hook implementation are picked up. By default, returns the
         options for items decorated with :class:`HookimplMarker`.
+
+        Discovery uses :func:`inspect.getattr_static` so properties and other
+        descriptors are not executed. Only functions, classmethods,
+        staticmethods, and bound methods are considered.
         """
-        method: object = getattr(plugin, name)
-        if not inspect.isroutine(method):
+        found = _static_hook_attr(plugin, name)
+        if found is None:
             return None
-        try:
-            res: HookimplOpts | None = getattr(
-                method, self.project_name + "_impl", None
-            )
-        except Exception:  # pragma: no cover
-            res = {}  # type: ignore[assignment] #pragma: no cover
-        if res is not None and not isinstance(res, dict):
-            # false positive
-            res = None  # type:ignore[unreachable] #pragma: no cover
-        return res
+        return cast(
+            HookimplOpts | None,
+            _get_marker_opts(found[0], self.project_name + "_impl"),
+        )
 
     def unregister(
         self, plugin: _Plugin | None = None, name: str | None = None
@@ -214,6 +297,19 @@ class PluginManager:
             plugin = self.get_plugin(name)
             if plugin is None:
                 return None
+        else:
+            # Both given: hook callers are looked up by plugin but the registry
+            # entry is removed by name, so they must refer to the same plugin.
+            registered_plugin = self._name2plugin.get(name)
+            registered_name = self.get_name(plugin)
+            if (registered_plugin is not None and registered_plugin is not plugin) or (
+                registered_name is not None and registered_name != name
+            ):
+                raise ValueError(
+                    f"Plugin name {name!r} and plugin {plugin!r} do not agree"
+                    f" (name is registered to {registered_plugin!r},"
+                    f" plugin is registered as {registered_name!r})"
+                )
 
         hookcallers = self.get_hookcallers(plugin)
         if hookcallers:
@@ -221,8 +317,7 @@ class PluginManager:
                 hookcaller._remove_plugin(plugin)
 
         # if self._name2plugin[name] == None registration was blocked: ignore
-        if self._name2plugin.get(name):
-            assert name is not None
+        if self._name2plugin.get(name) is not None:
             del self._name2plugin[name]
 
         return plugin
@@ -285,10 +380,18 @@ class PluginManager:
         This method can be overridden by ``PluginManager`` subclasses to
         customize how hook specifications are picked up. By default, returns the
         options for items decorated with :class:`HookspecMarker`.
+
+        Discovery uses :func:`inspect.getattr_static` so properties and other
+        descriptors are not executed. Only functions, classmethods,
+        staticmethods, and bound methods are considered.
         """
-        method = getattr(module_or_class, name)
-        opts: HookspecOpts | None = getattr(method, self.project_name + "_spec", None)
-        return opts
+        found = _static_hook_attr(module_or_class, name)
+        if found is None:
+            return None
+        return cast(
+            HookspecOpts | None,
+            _get_marker_opts(found[0], self.project_name + "_spec"),
+        )
 
     def get_plugins(self) -> set[Any]:
         """Return a set of all registered plugin objects."""
@@ -338,7 +441,9 @@ class PluginManager:
             _warn_for_function(hook.spec.warn_on_impl, hookimpl.function)
 
         # positional arg checking
-        notinspec = set(hookimpl.argnames) - set(hook.spec.argnames)
+        notinspec = set(hookimpl.argnames) - (
+            set(hook.spec.argnames) | set(hook.spec.kwargnames)
+        )
         if notinspec:
             raise PluginValidationError(
                 hookimpl.plugin,
@@ -349,7 +454,7 @@ class PluginManager:
             )
 
         if hook.spec.warn_on_impl_args:
-            for hookimpl_argname in hookimpl.argnames:
+            for hookimpl_argname in hookimpl.argnames + hookimpl.kwargnames:
                 argname_warning = hook.spec.warn_on_impl_args.get(hookimpl_argname)
                 if argname_warning is not None:
                     _warn_for_function(argname_warning, hookimpl.function)
@@ -409,19 +514,38 @@ class PluginManager:
                     ep.group != group
                     or (name is not None and ep.name != name)
                     # already registered
-                    or self.get_plugin(ep.name)
+                    or self.has_plugin(ep.name)
                     or self.is_blocked(ep.name)
                 ):
                     continue
                 plugin = ep.load()
                 self.register(plugin, name=ep.name)
-                self._plugin_distinfo.append((plugin, DistFacade(dist)))
+                self._plugin_distinfo.append((plugin, dist))
                 count += 1
         return count
 
     def list_plugin_distinfo(self) -> list[tuple[_Plugin, DistFacade]]:
         """Return a list of (plugin, distinfo) pairs for all
-        setuptools-registered plugins."""
+        setuptools-registered plugins.
+
+        .. note::
+            The distinfo objects are wrapped with :class:`~pluggy._compat.DistFacade`
+            for backward compatibility with the legacy pkg_resources API.
+            Prefer :meth:`list_plugin_distributions` for raw
+            :class:`importlib.metadata.Distribution` objects.
+        """
+        from ._compat import DistFacade
+
+        return [(plugin, DistFacade(dist)) for plugin, dist in self._plugin_distinfo]
+
+    def list_plugin_distributions(
+        self,
+    ) -> list[tuple[_Plugin, importlib.metadata.Distribution]]:
+        """Return a list of (plugin, distribution) pairs for all plugins
+        loaded via entry points.
+
+        .. versionadded:: 1.7
+        """
         return list(self._plugin_distinfo)
 
     def list_name_plugin(self) -> list[tuple[str, _Plugin]]:
@@ -439,9 +563,8 @@ class PluginManager:
             return None
         hookcallers = []
         for hookcaller in self.hook.__dict__.values():
-            for hookimpl in hookcaller.get_hookimpls():
-                if hookimpl.plugin is plugin:
-                    hookcallers.append(hookcaller)
+            if any(impl.plugin is plugin for impl in hookcaller.get_hookimpls()):
+                hookcallers.append(hookcaller)
         return hookcallers
 
     def add_hookcall_monitoring(
@@ -509,14 +632,20 @@ class PluginManager:
     def subset_hook_caller(
         self, name: str, remove_plugins: Iterable[_Plugin]
     ) -> HookCaller:
-        """Return a proxy :class:`~pluggy.HookCaller` instance for the named
-        method which manages calls to all registered plugins except the ones
-        from remove_plugins."""
+        """Return a proxy :class:`~pluggy.HookCaller` for the named hook which
+        calls all registered plugins except the ones from remove_plugins."""
         orig: HookCaller = getattr(self.hook, name)
-        plugins_to_remove = {plug for plug in remove_plugins if hasattr(plug, name)}
-        if plugins_to_remove:
-            return _SubsetHookCaller(orig, plugins_to_remove)
-        return orig
+        plugins_to_remove = set(remove_plugins)
+        # Optimization: discard plugins to remove which don't actually implement
+        # the hook, to make checks faster.
+        plugins_to_remove.intersection_update(
+            hookimpl.plugin for hookimpl in orig._hookimpls
+        )
+        # Optimization: if none of the plugins to remove actually implement the
+        # hook, avoid the subset hook caller overhead.
+        if not plugins_to_remove:
+            return orig
+        return _SubsetHookCaller(orig, plugins_to_remove)
 
 
 def _formatdef(func: Callable[..., object]) -> str:

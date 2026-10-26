@@ -25,6 +25,7 @@ from langgraph.checkpoint.base import (
     SerializerProtocol,
     get_checkpoint_id,
     get_checkpoint_metadata,
+    writes_sort_key,
 )
 
 logger = logging.getLogger(__name__)
@@ -139,6 +140,15 @@ class InMemorySaver(
             result[k] = self.serde.loads_typed(vv)
         return result
 
+    def _ordered_writes(
+        self, thread_id: str, checkpoint_ns: str, checkpoint_id: str
+    ) -> list[tuple[str, str, tuple[str, bytes], str]]:
+        stored = self.writes.get((thread_id, checkpoint_ns, checkpoint_id), {})
+        return [
+            stored[k]
+            for k in sorted(stored, key=lambda k: writes_sort_key(stored[k][3], *k))
+        ]
+
     def get_delta_channel_history(
         self, *, config: RunnableConfig, channels: Sequence[str]
     ) -> Mapping[str, DeltaChannelHistory]:
@@ -148,21 +158,20 @@ class InMemorySaver(
         whose stored blob is non-empty. Other channels keep walking until
         they find their own terminator or hit the root.
 
-        Pre-delta plain-value blobs subsume their ancestor's pending
-        writes (the value already includes them); `_DeltaSnapshot` blobs
-        do not (snapshot is the value AT that ancestor, prior to its own
-        pending writes that produce the child).
+        A blob is the value AT its ancestor, prior to the writes stored
+        under that same ancestor (those writes produce its child, which
+        is on the path to the target). This holds for `_DeltaSnapshot`
+        blobs and for pre-delta plain values alike, so the seed
+        ancestor's own writes are always collected. Writes at ancestors
+        older than the seed are subsumed by the seed value and are never
+        reached — the walk terminates there.
         """
         if not channels:
             return {}
-        # Imported lazily to avoid a hard checkpoint→serde-types coupling at
-        # module import; only this override needs the runtime check.
-        from langgraph.checkpoint.serde.types import _DeltaSnapshot
-
         thread_id = config["configurable"]["thread_id"]
         checkpoint_ns = config["configurable"].get("checkpoint_ns", "")
-        checkpoint_id = config["configurable"].get("checkpoint_id", "")
         ns_storage = self.storage.get(thread_id, {}).get(checkpoint_ns, {})
+        checkpoint_id = get_checkpoint_id(config) or max(ns_storage, default="")
 
         chain: list[str] = []
         target_entry = ns_storage.get(checkpoint_id)
@@ -199,16 +208,10 @@ class InMemorySaver(
                     blob_value_by_ch[ch] = self.serde.loads_typed(blob_entry)
                     terminated_here.add(ch)
 
-            step_writes = self.writes.get((thread_id, checkpoint_ns, cp_id), {})
-            for (_task_id, _idx), (tid, ch, serialized, _) in sorted(
-                step_writes.items(), reverse=True
+            for tid, ch, serialized, _ in reversed(
+                self._ordered_writes(thread_id, checkpoint_ns, cp_id)
             ):
                 if ch not in remaining:
-                    continue
-                blob_value = blob_value_by_ch.get(ch)
-                if blob_value is not None and not isinstance(
-                    blob_value, _DeltaSnapshot
-                ):
                     continue
                 collected_by_ch[ch].append(
                     (tid, ch, self.serde.loads_typed(serialized))
@@ -252,7 +255,7 @@ class InMemorySaver(
         if checkpoint_id := get_checkpoint_id(config):
             if saved := self.storage[thread_id][checkpoint_ns].get(checkpoint_id):
                 checkpoint, metadata, parent_checkpoint_id = saved
-                writes = self.writes[(thread_id, checkpoint_ns, checkpoint_id)].values()
+                writes = self._ordered_writes(thread_id, checkpoint_ns, checkpoint_id)
                 checkpoint_: Checkpoint = self.serde.loads_typed(checkpoint)
                 return CheckpointTuple(
                     config=config,
@@ -282,7 +285,7 @@ class InMemorySaver(
             if checkpoints := self.storage[thread_id][checkpoint_ns]:
                 checkpoint_id = max(checkpoints.keys())
                 checkpoint, metadata, parent_checkpoint_id = checkpoints[checkpoint_id]
-                writes = self.writes[(thread_id, checkpoint_ns, checkpoint_id)].values()
+                writes = self._ordered_writes(thread_id, checkpoint_ns, checkpoint_id)
                 checkpoint_ = self.serde.loads_typed(checkpoint)
                 return CheckpointTuple(
                     config={
@@ -385,9 +388,9 @@ class InMemorySaver(
                     elif limit is not None:
                         limit -= 1
 
-                    writes = self.writes[
-                        (thread_id, checkpoint_ns, checkpoint_id)
-                    ].values()
+                    writes = self._ordered_writes(
+                        thread_id, checkpoint_ns, checkpoint_id
+                    )
 
                     checkpoint_: Checkpoint = self.serde.loads_typed(checkpoint)
 

@@ -24,9 +24,7 @@ class EditDistance:
     ):
         config = config or {}
         metric = config.get("metric") or "damerau_levenshtein"
-        self.metric = self._get_metric(
-            metric, normalize_score=config.get("normalize_score", True)
-        )
+        self.metric = self._get_metric(metric, normalize_score=config.get("normalize_score", True))
 
     def evaluate(
         self,
@@ -56,10 +54,7 @@ class EditDistance:
             "indel": rf_distance.Indel,
         }
         if distance not in module_map:
-            raise ValueError(
-                f"Invalid distance metric: {distance}"
-                f"\nMust be one of: {list(module_map)}"
-            )
+            raise ValueError(f"Invalid distance metric: {distance}\nMust be one of: {list(module_map)}")
         module = module_map[distance]
         if normalize_score:
             return module.normalized_distance

@@ -56,9 +56,7 @@ if HAVE_AGENTS:
             try:
                 data_ = data.model_dump(exclude_none=True, mode="json")
             except Exception as e:
-                logger.debug(
-                    f"Failed to use model_dump to serialize {type(data)} to JSON: {e}"
-                )
+                logger.debug(f"Failed to use model_dump to serialize {type(data)} to JSON: {e}")
                 data_ = {default_key: data}
         else:
             data_ = {default_key: data}
@@ -125,8 +123,7 @@ if HAVE_AGENTS:
                 "input": span_data.input,
                 "instructions": (
                     span_data.response.instructions
-                    if span_data.response is not None
-                    and span_data.response.instructions
+                    if span_data.response is not None and span_data.response.instructions
                     else ""
                 ),
             }
@@ -154,10 +151,7 @@ if HAVE_AGENTS:
             metadata = {
                 k: v
                 for k, v in response.items()
-                if k
-                not in (
-                    {"output", "usage", "instructions"}.union(data["invocation_params"])
-                )
+                if k not in ({"output", "usage", "instructions"}.union(data["invocation_params"]))
             }
             metadata.update(
                 {

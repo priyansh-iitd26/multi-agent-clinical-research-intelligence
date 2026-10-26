@@ -15,12 +15,10 @@
 import sys
 import typing
 
-from tenacity import BaseRetrying
-from tenacity import DoAttempt
-from tenacity import DoSleep
-from tenacity import RetryCallState
-
 from tornado import gen
+
+from tenacity import BaseRetrying, DoAttempt, DoSleep, RetryCallState
+from tenacity._utils import override
 
 if typing.TYPE_CHECKING:
     from tornado.concurrent import Future
@@ -29,6 +27,8 @@ _RetValT = typing.TypeVar("_RetValT")
 
 
 class TornadoRetrying(BaseRetrying):
+    sleep: typing.Callable[..., "Future[None]"]
+
     def __init__(
         self,
         sleep: "typing.Callable[[float], Future[None]]" = gen.sleep,
@@ -37,10 +37,11 @@ class TornadoRetrying(BaseRetrying):
         super().__init__(**kwargs)
         self.sleep = sleep
 
-    @gen.coroutine  # type: ignore[untyped-decorator]
-    def __call__(
+    @gen.coroutine
+    @override
+    def __call__(  # type: ignore[override]
         self,
-        fn: "typing.Callable[..., typing.Union[typing.Generator[typing.Any, typing.Any, _RetValT], Future[_RetValT]]]",
+        fn: "typing.Callable[..., typing.Generator[typing.Any, typing.Any, _RetValT] | Future[_RetValT]]",
         *args: typing.Any,
         **kwargs: typing.Any,
     ) -> "typing.Generator[typing.Any, typing.Any, _RetValT]":
@@ -52,7 +53,7 @@ class TornadoRetrying(BaseRetrying):
             if isinstance(do, DoAttempt):
                 try:
                     result = yield fn(*args, **kwargs)
-                except BaseException:  # noqa: B902
+                except BaseException:
                     retry_state.set_exception(sys.exc_info())  # type: ignore[arg-type]
                 else:
                     retry_state.set_result(result)

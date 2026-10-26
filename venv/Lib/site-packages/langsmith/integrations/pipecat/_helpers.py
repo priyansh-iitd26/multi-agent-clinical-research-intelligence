@@ -36,13 +36,9 @@ def extract_llm_usage(attributes: dict[str, Any]) -> dict[str, Any]:
     if (v := _as_int(attributes.get("gen_ai.usage.output_tokens"))) is not None:
         usage["output_tokens"] = v
     input_detail: dict[str, int] = {}
-    if (
-        v := _as_int(attributes.get("gen_ai.usage.cache_read.input_tokens"))
-    ) is not None:
+    if (v := _as_int(attributes.get("gen_ai.usage.cache_read.input_tokens"))) is not None:
         input_detail["cache_read"] = v
-    if (
-        v := _as_int(attributes.get("gen_ai.usage.cache_creation.input_tokens"))
-    ) is not None:
+    if (v := _as_int(attributes.get("gen_ai.usage.cache_creation.input_tokens"))) is not None:
         input_detail["cache_creation"] = v
     if input_detail:
         usage["input_token_details"] = input_detail

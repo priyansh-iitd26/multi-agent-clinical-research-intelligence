@@ -1,5 +1,3 @@
-# File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
-
 from __future__ import annotations
 
 from typing import Union, Optional
@@ -10,11 +8,14 @@ from .citations_config_param import CitationsConfigParam
 from .base64_pdf_source_param import Base64PDFSourceParam
 from .plain_text_source_param import PlainTextSourceParam
 from .content_block_source_param import ContentBlockSourceParam
+from .file_document_source_param import FileDocumentSourceParam
 from .cache_control_ephemeral_param import CacheControlEphemeralParam
 
 __all__ = ["DocumentBlockParam", "Source"]
 
-Source: TypeAlias = Union[Base64PDFSourceParam, PlainTextSourceParam, ContentBlockSourceParam, URLPDFSourceParam]
+Source: TypeAlias = Union[
+    Base64PDFSourceParam, PlainTextSourceParam, ContentBlockSourceParam, URLPDFSourceParam, FileDocumentSourceParam
+]
 
 
 class DocumentBlockParam(TypedDict, total=False):

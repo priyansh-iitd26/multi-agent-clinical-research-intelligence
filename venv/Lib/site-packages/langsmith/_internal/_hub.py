@@ -20,9 +20,7 @@ def platform_hub_path(api_url: str) -> str:
     return PLATFORM_HUB
 
 
-def build_commit_url(
-    host: str, name: str, commit_hash: str, organization_id: str
-) -> str:
+def build_commit_url(host: str, name: str, commit_hash: str, organization_id: str) -> str:
     """Build the URL for a hub directory commit."""
     query = urlencode({"organizationId": organization_id})
     return f"{host}/context/{name}/{commit_hash[:8]}?{query}"

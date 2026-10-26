@@ -105,6 +105,11 @@ class SparseVector:
     def _from_sparse(self, arr: sparray | spmatrix, /) -> None:
         value: coo_array | coo_matrix = arr.tocoo(copy=False)  # type: ignore
 
+        # has_canonical_format added in scipy 1.12+
+        if not hasattr(value, 'has_canonical_format') or not value.has_canonical_format:
+            value = value.copy()
+            value.sum_duplicates()
+
         shape = cast(tuple[int, ...], value.shape)
         if len(shape) == 1:
             self._dim = shape[0]
@@ -115,10 +120,18 @@ class SparseVector:
 
         if hasattr(value, 'coords'):
             # scipy 1.13+
-            self._indices = value.coords[-1].tolist()
+            indices = value.coords[-1].tolist()
         else:
-            self._indices = value.col.tolist()
-        self._values = [float(v) for v in value.data]
+            indices = value.col.tolist()
+
+        elements = [(i, v) for i, v in zip(indices, value.data) if v != 0]
+
+        # has_canonical_format added in scipy 1.12+
+        if not hasattr(value, 'has_canonical_format') or not value.has_canonical_format:
+            elements.sort()
+
+        self._indices = [v[0] for v in elements]
+        self._values = [float(v[1]) for v in elements]
 
     def _from_dense(self, value: list[float] | ndarray, /) -> None:
         self._dim = len(value)

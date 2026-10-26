@@ -33,13 +33,6 @@ llm = ChatOpenAI(
     model = settings.huggingface_chat_model,
     base_url = settings.huggingface_base_url,
     temperature = 0.1,
-    # temperature controls how creative vs deterministic the output is
-    # 0.0 => completely deterministic (same input -> same output always)
-    # 1.0 => very creative, random, unpredictable
-    # 0.1 => mostly deterministic with slight variation
-    # we use 0.1 because intelligence briefs should be factual and
-    # consistent - not creative
-
     api_key = settings.huggingface_api_key
 )
 
@@ -62,7 +55,7 @@ async def supervisor_route(state: GraphState) -> dict:
     specialists to activate - we always run ALL six specialists in
     parallel for every task. This is by design:
     - different agents may find different signals in the same task
-    - running all six costs the same time as running one (parallel)
+    - running all six takes the same time as running one (parallel)
     - we never miss a signal type by selectively routing
 
     every LangGraph node must:
@@ -72,7 +65,7 @@ async def supervisor_route(state: GraphState) -> dict:
     LangGraph automatically merges the returned dict into the full state
 
     args:
-        state: the current GraphState from LangGraph
+        state: the current GraphState
 
     returns:
         dict with updated run_id, agents_activated, and signals fields
@@ -126,15 +119,8 @@ async def supervisor_compile(state: GraphState) -> dict:
 
     1. collects all signals from state (from all 6 agents)
     2. separates high-confidence signals from those needing review
-    3. uses GPT-4o to write a professional intelligence brief
+    3. uses a LLM to write a professional intelligence brief
     4. returns the completed state
-
-    why using gpt-4o to write the final brief ?
-
-    the raw signals are structured data - JSON with fields like
-    summary, confidence, nct_id. They are accurate but not readable.
-    GPT-4o transforms them into a professional narrative brief that
-    a human analyst can read and act on immediately
     """
 
     signals = state.get("signals", [])
@@ -143,7 +129,7 @@ async def supervisor_compile(state: GraphState) -> dict:
 
     logger.info(
         f"Supervisor compiling brief! | "
-        f"signals = {len(signals)} | "
+        f"num_signals = {len(signals)} | "
         f"num_agents_activated = {len(agents_activated)}"
     )
 
@@ -172,14 +158,14 @@ async def supervisor_compile(state: GraphState) -> dict:
         if s.get("confidence", 0) < 0.6
     ]
 
-    # formatting signals for gpt-4o
+    # formatting signals for LLM
     signals_text = _format_signals_for_llm(signals)
 
-    # prompts for gpt-4o
+    # prompts for LLM
     system_prompt = """You are the Chief Intelligence Officer of this clinical trial research integrity system. 
 Your job is to compile
 a professional executive intelligence brief from the signals generated
-by specialist AI agents.
+by the six specialist AI agents.
 
 BRIEF FORMAT:
 1. EXECUTIVE SUMMARY - 2-3 sentences summarising the most critical findings
@@ -208,7 +194,7 @@ AGENTS ACTIVATED: {', '.join(agents_activated)}
 Please compile the final intelligence brief now.
 """
     
-    # calling gpt-4o
+    # calling the LLM
     try:
         response = await llm.ainvoke(
             [
@@ -216,7 +202,7 @@ Please compile the final intelligence brief now.
                 HumanMessage(content = human_prompt)
             ]
             # ainvoke() is the async version of invoke()
-            # we await it because it makes a network call to OpenAI
+            # we await it because it makes a network call
         )
 
         final_brief = response.content
@@ -228,13 +214,13 @@ Please compile the final intelligence brief now.
         )
 
     except Exception as e:
-        # if gpt-4o call fails, fall back to a structured plain-text brief
+        # if the LLM API call fails, fall back to a structured plain-text brief
         # the run should not crash just because the LLM had an issue
         logger.error(f"LLM brief compilation failed! | error = {e}")
 
         final_brief = _fallback_brief(signals, agents_activated, task)
         # _fallback_brief() generates a basic brief from the raw signal
-        # data without using gpt-4o
+        # data without using an LLM
 
     return {
         "final_brief": final_brief,
@@ -250,12 +236,12 @@ Please compile the final intelligence brief now.
 def _format_signals_for_llm(signals: list[SignalOutput]) -> str:
     """
     converts a list of signal dicts into a clean, readable text block
-    that gpt-4o can effectively summarise into the final brief
+    that the LLM can effectively summarise into the final brief
 
-    why format before sending to gpt-4o ?
+    why format before sending to the LLM ?
 
     raw signal dicts are JSON - full of curly braces and quotes
-    gpt-4o works better with plain, labelled text than raw JSON
+    any LLM works better with plain, labelled text than raw JSON
     formatting the signals into clear sections may produce better briefs
     """
 
@@ -286,12 +272,12 @@ def _fallback_brief(
     task:             str,
 ) -> str:
     """
-    generates a basic structured brief without using gpt-4o
+    generates a basic structured brief without using the LLM
 
     called only when the LLM call fails - ensures the API always returns
-    something useful even if OpenAI is down or rate-limited
+    something useful even if the provider is down or rate-limited
 
-    the output is less polished than the GPT-4o brief but contains
+    the output is less polished than the LLM's brief but contains
     all the factual information the caller needs
     """
 

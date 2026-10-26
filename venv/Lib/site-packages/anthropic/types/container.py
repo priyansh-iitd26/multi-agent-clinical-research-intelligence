@@ -1,8 +1,8 @@
-# File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
-
+from typing import List, Optional
 from datetime import datetime
 
 from .._models import BaseModel
+from .container_skill import ContainerSkill
 
 __all__ = ["Container"]
 
@@ -17,3 +17,6 @@ class Container(BaseModel):
 
     expires_at: datetime
     """The time at which the container will expire."""
+
+    skills: Optional[List[ContainerSkill]] = None
+    """Skills loaded in the container"""

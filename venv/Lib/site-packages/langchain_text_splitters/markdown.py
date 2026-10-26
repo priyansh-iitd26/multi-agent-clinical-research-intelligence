@@ -192,8 +192,8 @@ class MarkdownHeaderTextSplitter:
 
                 # Check if line matches either standard or custom header pattern
                 if is_standard_header or is_custom_header:
-                    # Ensure we are tracking the header as metadata
-                    if name is not None:
+                    # Preserve support for untyped callers using None to skip metadata.
+                    if name is not None:  # ty: ignore[redundant-condition-strict]
                         # Get the current header level
                         if sep in self.custom_header_patterns:
                             current_header_level = self.custom_header_patterns[sep]
@@ -455,7 +455,8 @@ class ExperimentalMarkdownSyntaxTextSplitter:
             # Apply the header stack as metadata
             for depth, value in self.current_header_stack:
                 header_key = self.splittable_headers.get("#" * depth)
-                self.current_chunk.metadata[header_key] = value
+                if header_key is not None:
+                    self.current_chunk.metadata[header_key] = value
             self.chunks.append(self.current_chunk)
         # Reset the current chunk
         self.current_chunk = Document(page_content="")

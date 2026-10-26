@@ -38,8 +38,7 @@ def _create_score_json_schema(
         properties["score"] = {
             "type": "string",
             "enum": score_config.choices,
-            "description": f"The score for the evaluation, one of "
-            f"{', '.join(score_config.choices)}.",
+            "description": f"The score for the evaluation, one of {', '.join(score_config.choices)}.",
         }
     elif isinstance(score_config, ContinuousScoreConfig):
         properties["score"] = {
@@ -67,9 +66,7 @@ def _create_score_json_schema(
         "description": score_config.description,
         "type": "object",
         "properties": properties,
-        "required": (
-            ["score", "explanation"] if score_config.include_explanation else ["score"]
-        ),
+        "required": (["score", "explanation"] if score_config.include_explanation else ["score"]),
     }
 
 
@@ -119,9 +116,7 @@ class LLMEvaluator(RunEvaluator):
                 "Please install langchain by running `pip install langchain`."
             ) from e
 
-        chat_model = init_chat_model(
-            model=model_name, model_provider=model_provider, **kwargs
-        )
+        chat_model = init_chat_model(model=model_name, model_provider=model_provider, **kwargs)
 
         self._initialize(prompt_template, score_config, map_variables, chat_model)
 
@@ -183,14 +178,8 @@ class LLMEvaluator(RunEvaluator):
                 "Please install langchain-core by running `pip install langchain-core`."
             ) from e
 
-        if not (
-            isinstance(chat_model, BaseChatModel)
-            and hasattr(chat_model, "with_structured_output")
-        ):
-            raise ValueError(
-                "chat_model must be an instance of "
-                "BaseLanguageModel and support structured output."
-            )
+        if not (isinstance(chat_model, BaseChatModel) and hasattr(chat_model, "with_structured_output")):
+            raise ValueError("chat_model must be an instance of BaseLanguageModel and support structured output.")
 
         if isinstance(prompt_template, str):
             self.prompt = ChatPromptTemplate.from_messages([("human", prompt_template)])
@@ -212,9 +201,7 @@ class LLMEvaluator(RunEvaluator):
         self.runnable = self.prompt | chat_model
 
     @warn_beta
-    def evaluate_run(
-        self, run: Run, example: Optional[Example] = None
-    ) -> Union[EvaluationResult, EvaluationResults]:
+    def evaluate_run(self, run: Run, example: Optional[Example] = None) -> Union[EvaluationResult, EvaluationResults]:
         """Evaluate a run."""
         variables = self._prepare_variables(run, example)
         output: dict = cast(dict, self.runnable.invoke(variables))
@@ -237,50 +224,32 @@ class LLMEvaluator(RunEvaluator):
         variables = {}
         if "input" in self.prompt.input_variables:
             if len(run.inputs) == 0:
-                raise ValueError(
-                    "No input keys are present in run.inputs but the prompt "
-                    "requires 'input'."
-                )
+                raise ValueError("No input keys are present in run.inputs but the prompt requires 'input'.")
             if len(run.inputs) != 1:
                 raise ValueError(
-                    "Multiple input keys are present in run.inputs. Please provide "
-                    "a map_variables function."
+                    "Multiple input keys are present in run.inputs. Please provide a map_variables function."
                 )
             variables["input"] = list(run.inputs.values())[0]
 
         if "output" in self.prompt.input_variables:
             if not run.outputs:
-                raise ValueError(
-                    "No output keys are present in run.outputs but the prompt "
-                    "requires 'output'."
-                )
+                raise ValueError("No output keys are present in run.outputs but the prompt requires 'output'.")
             if len(run.outputs) == 0:
-                raise ValueError(
-                    "No output keys are present in run.outputs but the prompt "
-                    "requires 'output'."
-                )
+                raise ValueError("No output keys are present in run.outputs but the prompt requires 'output'.")
             if len(run.outputs) != 1:
                 raise ValueError(
-                    "Multiple output keys are present in run.outputs. Please "
-                    "provide a map_variables function."
+                    "Multiple output keys are present in run.outputs. Please provide a map_variables function."
                 )
             variables["output"] = list(run.outputs.values())[0]
 
         if "expected" in self.prompt.input_variables:
             if not example or not example.outputs:
-                raise ValueError(
-                    "No example or example outputs is provided but the prompt "
-                    "requires 'expected'."
-                )
+                raise ValueError("No example or example outputs is provided but the prompt requires 'expected'.")
             if len(example.outputs) == 0:
-                raise ValueError(
-                    "No output keys are present in example.outputs but the prompt "
-                    "requires 'expected'."
-                )
+                raise ValueError("No output keys are present in example.outputs but the prompt requires 'expected'.")
             if len(example.outputs) != 1:
                 raise ValueError(
-                    "Multiple output keys are present in example.outputs. Please "
-                    "provide a map_variables function."
+                    "Multiple output keys are present in example.outputs. Please provide a map_variables function."
                 )
             variables["expected"] = list(example.outputs.values())[0]
 
@@ -291,12 +260,8 @@ class LLMEvaluator(RunEvaluator):
         if isinstance(self.score_config, CategoricalScoreConfig):
             value = output["score"]
             explanation = output.get("explanation", None)
-            return EvaluationResult(
-                key=self.score_config.key, value=value, comment=explanation
-            )
+            return EvaluationResult(key=self.score_config.key, value=value, comment=explanation)
         elif isinstance(self.score_config, ContinuousScoreConfig):
             score = output["score"]
             explanation = output.get("explanation", None)
-            return EvaluationResult(
-                key=self.score_config.key, score=score, comment=explanation
-            )
+            return EvaluationResult(key=self.score_config.key, score=score, comment=explanation)

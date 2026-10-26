@@ -2,10 +2,10 @@
 # _ast_gen.py
 #
 # Generates the AST Node classes from a specification given in
-# a configuration file. This module can also be run as a script to
-# regenerate c_ast.py from _c_ast.cfg (from the repo root or the
-# pycparser/ directory). Use 'make check' to reformat the generated
-# file after running this script.
+# a configuration file. Run 'make regen-ast' from the repository root
+# to regenerate c_ast.py from _c_ast.cfg and format the code.
+# This module can also be run as a script (from the repo root or the
+# pycparser/ directory); then run 'make format' from the repo root.
 #
 # The design of this module was inspired by astgen.py from the
 # Python 2.5 code-base.
@@ -13,8 +13,8 @@
 # Eli Bendersky [https://eli.thegreenplace.net/]
 # License: BSD
 # -----------------------------------------------------------------
-from string import Template
 import os
+from string import Template
 from typing import IO
 
 
@@ -50,7 +50,8 @@ class ASTCodeGenerator:
                     continue
                 colon_i = line.find(":")
                 lbracket_i = line.find("[")
-                rbracket_i = line.find("]")
+                # A field's default may contain []; find the outer closing bracket.
+                rbracket_i = line.rfind("]")
                 if colon_i < 1 or lbracket_i <= colon_i or rbracket_i <= lbracket_i:
                     raise RuntimeError(f"Invalid line in {filename}:\n{line}\n")
 
@@ -74,10 +75,22 @@ class NodeCfg:
         self.attr = []
         self.child = []
         self.seq_child = []
+        self.defaults = {}
 
         for entry in contents:
+            entry, has_default, default = entry.partition("=")
+            entry = entry.strip()
             clean_entry = entry.rstrip("*")
             self.all_entries.append(clean_entry)
+
+            if has_default:
+                default = default.strip()
+                if default not in ("None", "[]"):
+                    raise RuntimeError(
+                        f"Unsupported default {default!r} for {name}.{clean_entry}; "
+                        "expected None or []"
+                    )
+                self.defaults[clean_entry] = default
 
             if entry.endswith("**"):
                 self.seq_child.append(clean_entry)
@@ -96,20 +109,30 @@ class NodeCfg:
     def _gen_init(self):
         src = f"class {self.name}(Node):\n"
 
-        if self.all_entries:
-            args = ", ".join(self.all_entries)
-            slots = ", ".join(f"'{e}'" for e in self.all_entries)
-            slots += ", 'coord', '__weakref__'"
-            arglist = f"(self, {args}, coord=None)"
-        else:
-            slots = "'coord', '__weakref__'"
-            arglist = "(self, coord=None)"
+        args = ["self"]
+        args.extend(name for name in self.all_entries if name not in self.defaults)
+        args.append("coord=None")
+        # Defaulted fields are keyword-only so adding one doesn't shift coord
+        # in existing positional calls. Both supported defaults use None here;
+        # list defaults are initialized separately for each instance below.
+        if self.defaults:
+            args.append("*")
+            args.extend(f"{name}=None" for name in self.defaults)
+        arglist = f"({', '.join(args)})"
 
+        # Keep coord and __weakref__ last: Node.__repr__ relies on their
+        # positions when iterating over the node's fields.
+        slots = ", ".join(
+            repr(name) for name in self.all_entries + ["coord", "__weakref__"]
+        )
         src += f"    __slots__ = ({slots})\n"
         src += f"    def __init__{arglist}:\n"
 
         for name in self.all_entries + ["coord"]:
-            src += f"        self.{name} = {name}\n"
+            if self.defaults.get(name) == "[]":
+                src += f"        self.{name} = [] if {name} is None else {name}\n"
+            else:
+                src += f"        self.{name} = {name}\n"
 
         return src
 
@@ -142,8 +165,7 @@ class NodeCfg:
                 src += f"            yield self.{child}\n"
 
             for seq_child in self.seq_child:
-                src += f"        for child in (self.{seq_child} or []):\n"
-                src += "            yield child\n"
+                src += f"        yield from self.{seq_child} or []\n"
 
             if not (self.child or self.seq_child):
                 # Empty generator
@@ -164,8 +186,11 @@ _PROLOGUE_COMMENT = r"""#-------------------------------------------------------
 # This code was automatically generated from _c_ast.cfg
 #
 # Do not modify it directly. Modify the configuration file and
-# run the generator again.
+# run 'make regen-ast' from the repository root to regenerate and format it.
 # ** ** *** ** **
+#
+# The order of generated __slots__ is significant to Node.__repr__.
+# ruff: noqa: RUF023
 #
 # pycparser: c_ast.py
 #
@@ -178,14 +203,15 @@ _PROLOGUE_COMMENT = r"""#-------------------------------------------------------
 """
 _PROLOGUE_CODE = r'''
 import sys
-from typing import Any, ClassVar, IO, Optional
+from typing import IO, Any, ClassVar
+
 
 def _repr(obj):
     """
     Get the representation of an object, with dedicated pprint-like format for lists.
     """
     if isinstance(obj, list):
-        return '[' + (',\n '.join((_repr(e).replace('\n', '\n ') for e in obj))) + '\n]'
+        return '[' + (',\n '.join(_repr(e).replace('\n', '\n ') for e in obj)) + '\n]'
     else:
         return repr(obj)
 
@@ -194,7 +220,7 @@ class Node:
     """ Abstract base class for AST nodes.
     """
     attr_names: ClassVar[tuple[str, ...]] = ()
-    coord: Optional[Any]
+    coord: Any | None
     def __repr__(self):
         """ Generates a python representation of the current node
         """
@@ -215,9 +241,13 @@ class Node:
         return result
 
     def children(self):
-        """ A sequence of all children that are Nodes
+        """Return a tuple of (name, child) pairs for immediate child nodes.
+
+        Names identify the field and, for list fields, the index, such as
+        "type" or "ext[0]". Optional children that are None are omitted.
+        The returned tuple supports len() and indexing. Iterating over the
+        node itself yields just the child nodes, without their names.
         """
-        pass
 
     def show(
         self,
@@ -227,7 +257,7 @@ class Node:
         showemptyattrs: bool = True,
         nodenames: bool = False,
         showcoord: bool = False,
-        _my_node_name: Optional[str] = None,
+        _my_node_name: str | None = None,
     ):
         """ Pretty print the Node and all its attributes and
             children (recursively) to a buffer.
@@ -261,7 +291,7 @@ class Node:
 
         if self.attr_names:
             def is_empty(v):
-                v is None or (hasattr(v, '__len__') and len(v) == 0)
+                return v is None or (hasattr(v, '__len__') and len(v) == 0)
             nvlist = [(n, getattr(self,n)) for n in self.attr_names \
                         if showemptyattrs or not is_empty(getattr(self,n))]
             if attrnames:

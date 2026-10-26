@@ -57,9 +57,7 @@ class TranslatedSpan:
 
     def finalize(self) -> ReadableSpan:
         """Build the export span from the draft and its rewritten attrs/events."""
-        return rebuild_readable_span(
-            self.span, attributes=self.attributes, events=self.events
-        )
+        return rebuild_readable_span(self.span, attributes=self.attributes, events=self.events)
 
     def set_name(self, name: str) -> None:
         """Set the exported span's name (the LangSmith run name)."""
@@ -167,15 +165,11 @@ class TranslatedSpan:
 
         A ``str`` is passed through unchanged; any other value is JSON-encoded.
         """
-        self.attributes["gen_ai.prompt"] = (
-            tool_input if isinstance(tool_input, str) else json.dumps(tool_input)
-        )
+        self.attributes["gen_ai.prompt"] = tool_input if isinstance(tool_input, str) else json.dumps(tool_input)
 
     def set_tool_output(self, tool_output: Any) -> None:
         """Write a tool run's output to ``gen_ai.completion`` as raw I/O (not messages).
 
         A ``str`` is passed through unchanged; any other value is JSON-encoded.
         """
-        self.attributes["gen_ai.completion"] = (
-            tool_output if isinstance(tool_output, str) else json.dumps(tool_output)
-        )
+        self.attributes["gen_ai.completion"] = tool_output if isinstance(tool_output, str) else json.dumps(tool_output)

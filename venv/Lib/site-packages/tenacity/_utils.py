@@ -13,11 +13,34 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import contextlib
 import functools
 import inspect
 import sys
 import typing
 from datetime import timedelta
+
+if typing.TYPE_CHECKING:
+    # Type checkers recognise this by name and use it to enforce
+    # `explicit-override`; taking it from typing_extensions means they do so
+    # whatever `python_version` they are run under. It is never imported at
+    # runtime, so it stays a type-check-only dependency.
+    from typing_extensions import override as override
+elif sys.version_info >= (3, 12):
+    from typing import override
+else:
+    _F = typing.TypeVar("_F", bound=typing.Callable[..., typing.Any])
+
+    def override(method: _F) -> _F:
+        """Backport of `typing.override` for Python < 3.12.
+
+        Only the runtime half is needed: setting the PEP 698 `__override__`
+        marker that introspection tools look for.
+        """
+        with contextlib.suppress(AttributeError, TypeError):
+            # Not every callable allows attribute assignment.
+            method.__override__ = True
+        return method
 
 
 # sys.maxsize:
@@ -32,25 +55,26 @@ class LoggerProtocol(typing.Protocol):
     Compatible with logging, structlog, loguru, etc...
     """
 
-    def log(
-        self, level: int, msg: str, /, *args: typing.Any, **kwargs: typing.Any
-    ) -> typing.Any: ...
+    def log(self, level: int, msg: str, *args: typing.Any) -> typing.Any: ...
 
 
 def find_ordinal(pos_num: int) -> str:
     # See: https://en.wikipedia.org/wiki/English_numerals#Ordinal_numbers
+
+    if 11 <= (pos_num % 100) <= 13:
+        return "th"
+
     if pos_num == 0:
         return "th"
-    elif pos_num == 1:
+    if pos_num == 1:
         return "st"
-    elif pos_num == 2:
+    if pos_num == 2:
         return "nd"
-    elif pos_num == 3:
+    if pos_num == 3:
         return "rd"
-    elif 4 <= pos_num <= 20:
+    if 4 <= pos_num <= 20:
         return "th"
-    else:
-        return find_ordinal(pos_num % 10)
+    return find_ordinal(pos_num % 10)
 
 
 def to_ordinal(pos_num: int) -> str:
@@ -66,23 +90,18 @@ def get_callback_name(cb: typing.Callable[..., typing.Any]) -> str:
     try:
         segments.append(cb.__qualname__)
     except AttributeError:
-        try:
+        with contextlib.suppress(AttributeError):
             segments.append(cb.__name__)
-        except AttributeError:
-            pass
     if not segments:
         return repr(cb)
-    else:
-        try:
-            # When running under sphinx it appears this can be none?
-            if cb.__module__:
-                segments.insert(0, cb.__module__)
-        except AttributeError:
-            pass
-        return ".".join(segments)
+    with contextlib.suppress(AttributeError):
+        # When running under sphinx it appears this can be none?
+        if cb.__module__:
+            segments.insert(0, cb.__module__)
+    return ".".join(segments)
 
 
-time_unit_type = typing.Union[int, float, timedelta]
+time_unit_type = int | float | timedelta
 
 
 def to_seconds(time_unit: time_unit_type) -> float:
@@ -97,7 +116,7 @@ def is_coroutine_callable(call: typing.Callable[..., typing.Any]) -> bool:
     if inspect.iscoroutinefunction(call):
         return True
     partial_call = isinstance(call, functools.partial) and call.func
-    dunder_call = partial_call or getattr(call, "__call__", None)
+    dunder_call = partial_call or getattr(call, "__call__", None)  # noqa: B004
     return inspect.iscoroutinefunction(dunder_call)
 
 

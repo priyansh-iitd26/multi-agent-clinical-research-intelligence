@@ -515,11 +515,7 @@ def start_session(
         **client_kwargs,
     )
     run.post()
-    max_audio_bytes = (
-        int(max_audio_seconds * sample_rate * 2)
-        if max_audio_seconds is not None
-        else None
-    )
+    max_audio_bytes = int(max_audio_seconds * sample_rate * 2) if max_audio_seconds is not None else None
     return EventSession(
         run=run,
         thread_id=thread_id,

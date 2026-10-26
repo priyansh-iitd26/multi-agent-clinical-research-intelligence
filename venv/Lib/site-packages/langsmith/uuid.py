@@ -36,9 +36,7 @@ def uuid7_from_datetime(dt: _dt.datetime) -> _uuid.UUID:
     return _uuid7(nanoseconds)
 
 
-def compute_run_id_for_secondary_replica(
-    run_id: _uuid.UUID | str, project_name: str
-) -> _uuid.UUID:
+def compute_run_id_for_secondary_replica(run_id: _uuid.UUID | str, project_name: str) -> _uuid.UUID:
     """Compute the run ID used for a secondary tracing replica.
 
     Args:

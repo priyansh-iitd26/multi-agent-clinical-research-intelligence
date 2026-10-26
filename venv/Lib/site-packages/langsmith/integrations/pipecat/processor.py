@@ -157,9 +157,9 @@ class PipecatLangSmithSpanProcessor(BaseLangSmithSpanProcessor):
         self._audio_mime_type = audio_mime_type
         # trace_id -> the conversation the root renders, as ``(sort_key, message)``
         # entries ordered by when each message occurred (see ``_SortKey``).
-        self._transcript_by_trace: MutableMapping[
-            int, list[tuple[_SortKey, dict[str, Any]]]
-        ] = TTLCache(maxsize=DEFAULT_STATE_MAXSIZE, ttl=state_ttl_seconds)
+        self._transcript_by_trace: MutableMapping[int, list[tuple[_SortKey, dict[str, Any]]]] = TTLCache(
+            maxsize=DEFAULT_STATE_MAXSIZE, ttl=state_ttl_seconds
+        )
         # conversation id -> merged PCM from an AudioBufferProcessor.
         self._audio_by_conversation: MutableMapping[str, _AudioRecord] = TTLCache(
             maxsize=DEFAULT_STATE_MAXSIZE, ttl=state_ttl_seconds
@@ -171,14 +171,12 @@ class PipecatLangSmithSpanProcessor(BaseLangSmithSpanProcessor):
         )
         # thread id -> trace_id, so realtime user transcripts delivered outside
         # spans can find the conversation rollup they belong to.
-        self._trace_by_thread: MutableMapping[str, int] = TTLCache(
-            maxsize=DEFAULT_STATE_MAXSIZE, ttl=state_ttl_seconds
-        )
+        self._trace_by_thread: MutableMapping[str, int] = TTLCache(maxsize=DEFAULT_STATE_MAXSIZE, ttl=state_ttl_seconds)
         # thread id -> user turns (as ``(sort_key, message)``) that arrived before
         # their trace was known.
-        self._pending_user_transcripts: MutableMapping[
-            str, list[tuple[_SortKey, dict[str, Any]]]
-        ] = TTLCache(maxsize=DEFAULT_STATE_MAXSIZE, ttl=state_ttl_seconds)
+        self._pending_user_transcripts: MutableMapping[str, list[tuple[_SortKey, dict[str, Any]]]] = TTLCache(
+            maxsize=DEFAULT_STATE_MAXSIZE, ttl=state_ttl_seconds
+        )
 
     def _remember_thread_id(self, trace_id: int, thread_id: str) -> None:
         """Also index thread→trace, draining user turns buffered before the map."""
@@ -190,9 +188,7 @@ class PipecatLangSmithSpanProcessor(BaseLangSmithSpanProcessor):
 
     # -- realtime user transcript --------------------------------------------
 
-    def instrument_user_aggregator(
-        self, aggregator: LLMContextAggregatorPair, thread_id: str
-    ) -> None:
+    def instrument_user_aggregator(self, aggregator: LLMContextAggregatorPair, thread_id: str) -> None:
         """Fold a realtime session's finalized user transcripts into its trace.
 
         Pipecat realtime services emit the user's finalized text through the user
@@ -222,9 +218,7 @@ class PipecatLangSmithSpanProcessor(BaseLangSmithSpanProcessor):
         ) -> None:
             self._record_user_transcript(tid, message.content, message.timestamp)
 
-    def _record_user_transcript(
-        self, thread_id: str, text: str, timestamp: str
-    ) -> None:
+    def _record_user_transcript(self, thread_id: str, text: str, timestamp: str) -> None:
         """Append or buffer a finalized user turn, keyed by when it was spoken."""
         if not text:
             return
@@ -238,9 +232,7 @@ class PipecatLangSmithSpanProcessor(BaseLangSmithSpanProcessor):
             return
         self._append_transcript(trace_id, message, sort_key)
 
-    def _append_transcript(
-        self, trace_id: int, message: dict[str, Any], sort_key: _SortKey
-    ) -> None:
+    def _append_transcript(self, trace_id: int, message: dict[str, Any], sort_key: _SortKey) -> None:
         """Add a message to the transcript the root renders, keyed for ordering."""
         conversation = self._transcript_by_trace.get(trace_id) or []
         conversation.append((sort_key, message))
@@ -249,9 +241,7 @@ class PipecatLangSmithSpanProcessor(BaseLangSmithSpanProcessor):
 
     # -- audio buffer registration -------------------------------------------
 
-    def attach_audio_buffer(
-        self, audio_buffer: AudioBufferProcessor, conversation_id: str
-    ) -> None:
+    def attach_audio_buffer(self, audio_buffer: AudioBufferProcessor, conversation_id: str) -> None:
         """Record this conversation's audio from a Pipecat ``AudioBufferProcessor``.
 
         Registers an ``on_audio_data`` handler that accumulates the merged PCM
@@ -377,9 +367,7 @@ class PipecatLangSmithSpanProcessor(BaseLangSmithSpanProcessor):
             transcript.append(build_completion_message(output_data))
         if transcript:
             base = tspan.span.start_time or 0
-            self._transcript_by_trace[trace_id] = [
-                ((base, i), message) for i, message in enumerate(transcript)
-            ]
+            self._transcript_by_trace[trace_id] = [((base, i), message) for i, message in enumerate(transcript)]
 
     def _handle_tts(self, tspan: TranslatedSpan) -> None:
         """TTS span: text → audio. The voice is metadata, not content."""
@@ -401,15 +389,11 @@ class PipecatLangSmithSpanProcessor(BaseLangSmithSpanProcessor):
         if conversation:
             tspan.set_messages(prompt=conversation)
 
-        output_data = tspan.attributes.get("output") or tspan.attributes.get(
-            "text_output", ""
-        )
+        output_data = tspan.attributes.get("output") or tspan.attributes.get("text_output", "")
         if output_data:
             completion = build_completion_message(output_data)
             tspan.set_messages(completion=[completion])
-            self._append_transcript(
-                trace_id, completion, (tspan.span.start_time or 0, 0)
-            )
+            self._append_transcript(trace_id, completion, (tspan.span.start_time or 0, 0))
 
         usage = extract_llm_usage(tspan.attributes)
         if usage:
@@ -426,11 +410,7 @@ class PipecatLangSmithSpanProcessor(BaseLangSmithSpanProcessor):
         """
         tspan.set_kind("chain")
         messages = parse_llm_messages(tspan.attributes.get("input", ""))
-        seen = {
-            key
-            for message in self._render_messages(trace_id)
-            if (key := tool_message_key(message)) is not None
-        }
+        seen = {key for message in self._render_messages(trace_id) if (key := tool_message_key(message)) is not None}
         base = tspan.span.start_time or 0
         added = 0
         for message in messages:
@@ -506,16 +486,12 @@ class PipecatLangSmithSpanProcessor(BaseLangSmithSpanProcessor):
 
     def _handle_conversation(self, tspan: TranslatedSpan, trace_id: int) -> None:
         """Conversation span: the whole session; the LangSmith root."""
-        conversation_id = tspan.attributes.get(
-            "conversation.id", ""
-        ) or tspan.attributes.get("conversation_id", "")
+        conversation_id = tspan.attributes.get("conversation.id", "") or tspan.attributes.get("conversation_id", "")
         tspan.set_kind("chain")
         tspan.set_root_span(True)
         tspan.set_metadata("ls_modality", "audio")
         tspan.set_metadata("ls_integration", "pipecat")
-        tspan.set_metadata(
-            "ls_integration_version", get_package_version("pipecat-ai") or ""
-        )
+        tspan.set_metadata("ls_integration_version", get_package_version("pipecat-ai") or "")
 
         messages = self._render_messages(trace_id)
         if messages:
@@ -526,9 +502,7 @@ class PipecatLangSmithSpanProcessor(BaseLangSmithSpanProcessor):
 
     # -- audio attachment -----------------------------------------------------
 
-    def _attach_conversation_audio(
-        self, tspan: TranslatedSpan, conversation_id: str
-    ) -> None:
+    def _attach_conversation_audio(self, tspan: TranslatedSpan, conversation_id: str) -> None:
         """Encode the accumulated PCM and attach it, keyed strictly by id.
 
         Never falls back to "the only recording in flight" — a heuristic match
@@ -550,17 +524,12 @@ class PipecatLangSmithSpanProcessor(BaseLangSmithSpanProcessor):
         pcm_limit_bytes = self._pcm_audio_size_limit_bytes()
         if pcm_limit_bytes is not None and len(recording.pcm) > pcm_limit_bytes:
             logger.warning(
-                "langsmith voice: skipped oversize pipecat audio for "
-                "conversation_id=%r",
+                "langsmith voice: skipped oversize pipecat audio for conversation_id=%r",
                 conversation_id,
             )
             return
-        wav = pcm_to_wav(
-            bytes(recording.pcm), recording.sample_rate, recording.num_channels
-        )
-        self._attach_audio(
-            tspan, name="conversation.wav", data=wav, mime_type=self._audio_mime_type
-        )
+        wav = pcm_to_wav(bytes(recording.pcm), recording.sample_rate, recording.num_channels)
+        self._attach_audio(tspan, name="conversation.wav", data=wav, mime_type=self._audio_mime_type)
 
     def _cleanup_conversation(self, trace_id: int, conversation_id: str) -> None:
         thread_id = self._thread_id_by_trace.get(trace_id)
@@ -577,9 +546,7 @@ class PipecatLangSmithSpanProcessor(BaseLangSmithSpanProcessor):
 
         Scoped to one trace at conversation end, or all held spans at shutdown.
         """
-        trace_ids = (
-            [trace_id] if trace_id is not None else list(self._tool_calls_by_trace)
-        )
+        trace_ids = [trace_id] if trace_id is not None else list(self._tool_calls_by_trace)
         for tid in trace_ids:
             for tspan in self._tool_calls_by_trace.pop(tid, None) or []:
                 self._export(tspan)
