@@ -165,3 +165,223 @@ async def test_broken_promises_error_handling(base_state, mock_llm, mock_procedu
     assert any("broken_promises_agent" in err and "LLM Timeout Error!" in err for err in result["error_log"])
     # verifying that broken_promises_agent is still marked as activated
     assert "broken_promises_agent" in result["agents_activated"]
+
+@pytest.mark.asyncio
+async def test_broken_promises_malformed_json(base_state, mock_llm, mock_procedural_store, mock_episodic_store):
+    """
+    tests that broken_promises_agent handles malformed JSON from LLM without crashing
+    """
+
+    # mock LLM to return malformed JSON
+    mock_response = MagicMock()
+    mock_response.content = "I found a violation: { bad_json: 'missing quotes }"
+    mock_response.tool_calls = []
+    mock_llm.ainvoke = AsyncMock(return_value=mock_response)
+
+    result = await broken_promises_node(base_state)
+
+    # verifying no signals were added due to parsing error
+    assert len(result["signals"]) == 0
+    # verifying agent still marked as activated
+    assert "broken_promises_agent" in result["agents_activated"]
+
+@pytest.mark.asyncio
+async def test_broken_promises_tool_execution_failure(base_state, mock_llm, mock_procedural_store, mock_episodic_store):
+    """
+    tests that broken_promises_agent handles tool execution errors gracefully
+    """
+
+    # iteration 1: LLM calls get_study_amendments
+    response1 = MagicMock()
+    response1.content = "I need to check amendments."
+    response1.tool_calls = [{
+        "name": "get_study_amendments",
+        "args": {"nct_id": "NCT01234567"}
+    }]
+
+    # iteration 2: LLM sees the error and decides it's inconclusive
+    response2 = MagicMock()
+    response2.content = "NO_SIGNALS_FOUND"
+    response2.tool_calls = []
+
+    mock_llm.ainvoke.side_effect = [response1, response2]
+
+    # mocking the tool execution to fail
+    with patch("agents.broken_promises_agent._execute_tool", new_callable=AsyncMock) as mock_execute:
+        mock_execute.return_value = "Error: API rate limit exceeded!"
+
+        result = await broken_promises_node(base_state)
+
+    # verifying tool was called and failed
+    mock_execute.assert_called_once()
+    # verifying loop continued and eventually finished
+    assert mock_llm.ainvoke.call_count == 2
+    # verifying no signals were generated
+    assert len(result["signals"]) == 0
+
+@pytest.mark.asyncio
+async def test_broken_promises_updates_sponsor_profile(base_state, mock_llm, mock_procedural_store, mock_episodic_store):
+    """
+    tests that broken_promises_agent calls update_sponsor_profile when fraud is detected
+    """
+
+    # iteration 1: LLM detects fraud and decides to update sponsor profile FIRST
+    response1 = MagicMock()
+    response1.content = "I detected outcome switching fraud. I need to update the sponsor profile."
+    response1.tool_calls = [{
+        "name": "update_sponsor_profile",
+        "args": {"nct_id": "NCT01234567", "note": "Outcome switching detected"}
+    }]
+
+    # iteration 2: LLM receives tool success and outputs the final JSON signal
+    signal_json = {
+        "nct_id": "NCT01234567",
+        "signal_type": "broken_promise",
+        "summary": "Fraudulent outcome switch",
+        "evidence": ["Evidence A"],
+        "confidence": 0.95
+    }
+    
+    response2 = MagicMock()
+    # provide the JSON in the final iteration so the agent's parser catches it
+    response2.content = f"Analysis complete. Here is the official signal: {json.dumps(signal_json)}"
+    response2.tool_calls = []
+
+    mock_llm.ainvoke.side_effect = [response1, response2]
+
+    with patch("agents.broken_promises_agent._execute_tool", new_callable=AsyncMock) as mock_execute:
+        mock_execute.return_value = "Sponsor profile updated successfully."
+
+        result = await broken_promises_node(base_state)
+
+    # verifying update_sponsor_profile was actually called
+    called_tool_names = [call.args[0]["name"] for call in mock_execute.call_args_list]
+    assert "update_sponsor_profile" in called_tool_names
+    assert len(result["signals"]) == 1
+
+@pytest.mark.asyncio
+async def test_broken_promises_tool_search_studies_by_meaning(base_state, mock_llm, mock_procedural_store, mock_episodic_store):
+    """
+    tests that broken_promises_agent can use search_studies_by_meaning to find candidate trials
+    """
+    response1 = MagicMock()
+    response1.content = "Searching for trials with outcome switching."
+    response1.tool_calls = [{
+        "name": "search_studies_by_meaning",
+        "args": {"query": "primary outcome changed after enrollment"}
+    }]
+
+    response2 = MagicMock()
+    response2.content = "NO_SIGNALS_FOUND"
+    response2.tool_calls = []
+
+    mock_llm.ainvoke.side_effect = [response1, response2]
+
+    with patch("agents.broken_promises_agent._execute_tool", new_callable=AsyncMock) as mock_execute:
+        mock_execute.return_value = "Found NCT09999999 with protocol amendments."
+        result = await broken_promises_node(base_state)
+
+    called_tool_names = [call.args[0]["name"] for call in mock_execute.call_args_list]
+    assert "search_studies_by_meaning" in called_tool_names
+    assert "broken_promises_agent" in result["agents_activated"]
+
+@pytest.mark.asyncio
+async def test_broken_promises_tool_search_past_episodes(base_state, mock_llm, mock_procedural_store, mock_episodic_store):
+    """
+    tests that broken_promises_agent uses search_past_episodes to leverage previous analysis
+    """
+    response1 = MagicMock()
+    response1.content = "Checking for similar past cases."
+    response1.tool_calls = [{
+        "name": "search_past_episodes",
+        "args": {"query": "outcome switching", "agent_name": "broken_promises_agent"}
+    }]
+
+    response2 = MagicMock()
+    response2.content = "NO_SIGNALS_FOUND"
+    response2.tool_calls = []
+
+    mock_llm.ainvoke.side_effect = [response1, response2]
+
+    with patch("agents.broken_promises_agent._execute_tool", new_callable=AsyncMock) as mock_execute:
+        mock_execute.return_value = "Past episode found: NCT08888888 had similar pattern."
+        result = await broken_promises_node(base_state)
+
+    called_tool_names = [call.args[0]["name"] for call in mock_execute.call_args_list]
+    assert "search_past_episodes" in called_tool_names
+    assert "broken_promises_agent" in result["agents_activated"]
+
+@pytest.mark.asyncio
+async def test_broken_promises_tool_save_episode(base_state, mock_llm, mock_procedural_store, mock_episodic_store):
+    """
+    tests that broken_promises_agent uses save_episode tool via LLM if it decides to
+    """
+    response1 = MagicMock()
+    response1.content = "Saving this interesting finding to memory."
+    response1.tool_calls = [{
+        "name": "save_episode",
+        "args": {"agent_name": "broken_promises_agent", "episodic_content": "Found weird pattern in NCT0123", "outcome": "manual_save"}
+    }]
+
+    response2 = MagicMock()
+    response2.content = "NO_SIGNALS_FOUND"
+    response2.tool_calls = []
+
+    mock_llm.ainvoke.side_effect = [response1, response2]
+
+    with patch("agents.broken_promises_agent._execute_tool", new_callable=AsyncMock) as mock_execute:
+        mock_execute.return_value = "Episode saved."
+        result = await broken_promises_node(base_state)
+
+    called_tool_names = [call.args[0]["name"] for call in mock_execute.call_args_list]
+    assert "save_episode" in called_tool_names
+
+@pytest.mark.asyncio
+async def test_broken_promises_tool_get_sponsor_profile(base_state, mock_llm, mock_procedural_store, mock_episodic_store):
+    """
+    tests that broken_promises_agent checks sponsor credibility via get_sponsor_profile
+    """
+    response1 = MagicMock()
+    response1.content = "Checking sponsor track record."
+    response1.tool_calls = [{
+        "name": "get_sponsor_profile",
+        "args": {"nct_id": "NCT01234567"}
+    }]
+
+    response2 = MagicMock()
+    response2.content = "NO_SIGNALS_FOUND"
+    response2.tool_calls = []
+
+    mock_llm.ainvoke.side_effect = [response1, response2]
+
+    with patch("agents.broken_promises_agent._execute_tool", new_callable=AsyncMock) as mock_execute:
+        mock_execute.return_value = "Sponsor has 2 previous warnings for integrity issues."
+        result = await broken_promises_node(base_state)
+
+    called_tool_names = [call.args[0]["name"] for call in mock_execute.call_args_list]
+    assert "get_sponsor_profile" in called_tool_names
+
+@pytest.mark.asyncio
+async def test_broken_promises_tool_fetch_study_details(base_state, mock_llm, mock_procedural_store, mock_episodic_store):
+    """
+    tests that broken_promises_agent fetches basic study details
+    """
+    response1 = MagicMock()
+    response1.content = "Fetching study details."
+    response1.tool_calls = [{
+        "name": "fetch_study_details",
+        "args": {"nct_id": "NCT01234567"}
+    }]
+
+    response2 = MagicMock()
+    response2.content = "NO_SIGNALS_FOUND"
+    response2.tool_calls = []
+
+    mock_llm.ainvoke.side_effect = [response1, response2]
+
+    with patch("agents.broken_promises_agent._execute_tool", new_callable=AsyncMock) as mock_execute:
+        mock_execute.return_value = "Study Details: Primary outcome is HbA1c."
+        result = await broken_promises_node(base_state)
+
+    called_tool_names = [call.args[0]["name"] for call in mock_execute.call_args_list]
+    assert "fetch_study_details" in called_tool_names
