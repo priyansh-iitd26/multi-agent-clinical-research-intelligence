@@ -134,6 +134,7 @@ async def test_broken_promises_tool_use_loop(base_state, mock_llm, mock_procedur
     response2.content = f"Based on the data: {json.dumps(signal_json)}"
     response2.tool_calls = []
 
+    # successive invocations return different responses
     mock_llm.ainvoke.side_effect = [response1, response2]
 
     # mocking the tool execution within the agent
