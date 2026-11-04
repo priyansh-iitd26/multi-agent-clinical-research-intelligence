@@ -38,10 +38,6 @@ This is a multi-agent clinical research integrity system engineered to detect ou
 
   `pytest tests/` *(for agent-specific isolation tests run `pytest tests/layer01_unit_tests_isolation/`)*
 
-* **Run LLM-as-a-judge Evaluation:**
-
-  `python scripts/evaluate.py`
-
 * **Linting & Formatting:**
 
   `black . && ruff check .`
@@ -58,9 +54,7 @@ This is a multi-agent clinical research integrity system engineered to detect ou
 
 * `ingestion/` & `processing/`: Data infrastructure. `ingestion/` executes API requests and document parsing. `processing/` manages text chunking and embeds data into `pgvector`.
 
-* `evaluation/`: Custom evaluation-driven development (EDD) infrastructure featuring calibration, isolated fixtures, and judge scorers.
-
-* `tests/`: Tests each agent in isolation using `pytest`
+* `tests/`: Currently, only tests each agent in isolation using `pytest` and mocking libraries like `patch`, `MagicMock` and `AsyncMock`.
 
 * `deployment/`: Environment configurations, GCP Cloud Run YAMLs, and Dockerfiles for deployment.
 
