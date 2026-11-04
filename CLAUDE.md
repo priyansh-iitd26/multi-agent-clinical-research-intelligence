@@ -62,8 +62,6 @@ This is a multi-agent clinical research integrity system engineered to detect ou
 
 * **Multi-Agent Supervisor Pattern:** Agents do not interact directly with one another. The architecture enforces a strict hub-and-spoke routing paradigm through `supervisor.py`, with each agent restricted to a tightly scoped domain.
 
-* **Evaluation-Driven Development (EDD):** LLM performance and agent reasoning must be tested using the LLM-as-a-judge framework. While standard components use isolated unit tests (`layer01_unit_tests_isolation`), agent logic is continuously evaluated through `evaluation/judge.py` and `evaluation/scorers.py`.
-
 * **Three-Layer Memory Separation:** State persistence explicitly isolates semantic (vector/embeddings), episodic (event history), and procedural (instructions/rules) memory types. Context retrieval paths must not cross-contaminate these stores.
 
 * **Human-in-the-Loop (HITL) Enforcements:** High-stakes automated decisions must route through `graph/hitl.py` and the `api/routers/review.py` endpoints for validation rather than executing autonomously.
