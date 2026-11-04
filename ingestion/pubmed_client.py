@@ -148,7 +148,6 @@ class PubMedClient:
 
         return results
 
-    # private method - search for paper IDs (esearch)
     @retry(
         stop = stop_after_attempt(MAX_RETRIES),
         wait = wait_exponential(multiplier = 1, min = 1, max = 8),
@@ -157,6 +156,7 @@ class PubMedClient:
         )
     )
 
+    # private method - search for paper IDs (esearch)
     async def _search_paper_ids(
         self,
         nct_id : str,
@@ -242,7 +242,6 @@ class PubMedClient:
 
         return all_papers
        
-    # private method - fetch batch
     @retry(
         stop = stop_after_attempt(MAX_RETRIES),
         wait = wait_exponential(multiplier = 1, min = 1, max = 8),
@@ -251,6 +250,7 @@ class PubMedClient:
         )
     )
 
+    # private method - fetch batch
     async def _fetch_batch(
         self,
         paper_ids : list[str]
