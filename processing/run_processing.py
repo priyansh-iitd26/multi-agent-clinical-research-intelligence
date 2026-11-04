@@ -46,7 +46,7 @@ async def run_processing():
     runs / executes the entire processing pipeline from start to finish
     - reads cleaned studies from GCS bucket
     - chunks them
-    - embeds them via OpenAI
+    - embeds them via the Qwen embedding model
     - stores everything in Cloud SQL for agent search & retrieval
     """
     gcs_store = GCSStore()

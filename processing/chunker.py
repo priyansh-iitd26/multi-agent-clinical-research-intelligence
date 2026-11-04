@@ -1,15 +1,9 @@
 # this file takes a long study document and breaks it into smaller,
 # overlapping pieces of text called chunks
-# each chunk is then sent to OpenAI in the next step (embedder.py)
+# each chunk is then sent to the embedding model in the next step (embedder.py)
 # to get its vector embedding
 
 # why do we need to chunk at all ?
-# OpenAI's embedding model has a token limit — it cannot process
-# an entire study document in one shot 
-# a single clinical trial record can easily be 2000-5000 words long 
-# we must break it into smaller pieces first
-
-# but there is a much deeper reason too
 # if we embed the WHOLE document as one giant chunk, 
 # the embedding becomes a blurry average of everything in it 
 # when an agent searches for "sponsor never posted results", 
@@ -97,6 +91,7 @@ class Chunker:
     """
     splits clean study and paper documents into overlapping text chunks
     """
+
     # chunk one study
     def chunk_study(self, parsed_study: ParsedStudy) -> list[TextChunk]:
         """
@@ -118,12 +113,11 @@ class Chunker:
             once the document is created, we split it into overlapping chunks 
             because embedding models have token limits
         """
-        # step 1 : combining all the study's fields into one labelled text block
 
+        # step 1 : combining all the study's fields into one labelled text block
         full_text = self._build_full_study_text(parsed_study)
 
         # step 2 : split the full text block into overlapping chunks
-
         chunks = self._split_into_chunks(
             text = full_text,
             unique_id = parsed_study.nct_id,
@@ -150,6 +144,7 @@ class Chunker:
         then we SPLIT that long string into overlapping chunks
         (same strategy as chunk_study)
         """
+
         full_text = self._build_full_paper_text(parsed_paper)
 
         chunks = self._split_into_chunks(
@@ -172,6 +167,7 @@ class Chunker:
         chunks a whole list of studies in one single function call
         returns ALL chunks from every study in studies[] as one flat list.
         """
+
         all_chunks : list[TextChunk] = []
 
         for study in studies:
@@ -192,6 +188,7 @@ class Chunker:
         chunks a whole list of papers in one single function call
         returns ALL chunks from every paper in papers[] as one flat list.
         """
+
         all_chunks : list[TextChunk] = []
 
         for paper in papers:
@@ -212,7 +209,7 @@ class Chunker:
         combines all a study's fields into one labelled text block
 
         WHY label each field ?
-        when OpenAI embeds this text, the labels help the model
+        when the embedding model embeds this text, the labels help the model
         understand what it is reading 
         "SPONSOR: Novo Nordisk" is much more informative than just "Novo Nordisk"
         there with no context, labels make embeddings more precise
@@ -230,6 +227,7 @@ class Chunker:
             one long string containing all the study's key fields
             each clearly labelled on its own line
         """
+
         # building sections as a list first
         # will join them at end
         # much cleaner than string concatenation with +=
@@ -312,6 +310,7 @@ class Chunker:
         combines all a paper's fields into one labelled text block
         similar in logic to build_full_study_text
         """
+        
         sections = []
 
         sections.append(f"PMID: {paper.pmid}")
